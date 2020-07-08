@@ -7,7 +7,7 @@ A Rust library to measure time with high performance. Mainly cooperate with [min
 
 ```toml
 [dependencies]
-minitrace = { git = "https://github.com/zhongzc/minstant.git" }
+minstant = { git = "https://github.com/zhongzc/minstant.git" }
 ```
 
 ```rust
