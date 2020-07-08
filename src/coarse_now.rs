@@ -38,8 +38,7 @@ pub(crate) fn now() -> u64 {
 #[cfg(target_os = "macos")]
 #[inline]
 pub(crate) fn now() -> u64 {
-    let nsec = unsafe { clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW_APPROX) };
-    nsec
+    unsafe { clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW_APPROX) }
 }
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
