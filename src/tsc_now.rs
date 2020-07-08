@@ -300,9 +300,8 @@ fn set_affinity(cpuid: usize) -> Result<(), Error> {
 /// memory-node numbers and ranges of numbers, in ASCII decimal.
 ///
 /// Examples of the List Format:
-///
-///     0-4,9           # bits 0, 1, 2, 3, 4, and 9 set
-///     0-2,7,12-14     # bits 0, 1, 2, 7, 12, 13, and 14 set
+///   0-4,9           # bits 0, 1, 2, 3, 4, and 9 set
+///   0-2,7,12-14     # bits 0, 1, 2, 7, 12, 13, and 14 set
 fn parse_cpu_list_format(list: &str) -> Result<Vec<usize>, Error> {
     let mut res = vec![];
     let list = list.trim();
