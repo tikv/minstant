@@ -28,13 +28,13 @@ pub(crate) fn now() -> u64 {
     match &*TSC_LEVEL {
         TSCLevel::Stable {
             cycles_from_auchor, ..
-        } => tsc() - cycles_from_auchor,
+        } => tsc().wrapping_sub(*cycles_from_auchor),
         TSCLevel::PerCPUStable {
             cycles_from_auchor, ..
         } => {
             let (tsc, cpuid) = tsc_with_cpuid();
             let auchor = cycles_from_auchor[cpuid];
-            tsc - auchor
+            tsc.wrapping_sub(auchor)
         }
         TSCLevel::Unstable => panic!("tsc is unstable"),
     }
@@ -82,6 +82,9 @@ lazy_static::lazy_static! {
             };
 
             let max_cpu_id = *cpuids.iter().max().unwrap();
+
+            // Spread the threads to all CPUs and calculate
+            // cycles from auchor separately
             let handles = cpuids
                 .into_iter()
                 .map(|id| {
@@ -99,6 +102,7 @@ lazy_static::lazy_static! {
                 })
                 .collect::<Vec<_>>();
 
+            // Block and wait for all threads finished
             let results = handles
                 .into_iter()
                 .map(|h| h.join())
@@ -110,7 +114,11 @@ lazy_static::lazy_static! {
                 return TSCLevel::Unstable;
             };
 
-            let mut cycles_from_auchor = vec![std::u64::MAX; max_cpu_id + 1];
+            // Indexed by CPU ID
+            let mut cycles_from_auchor = vec![0; max_cpu_id + 1];
+
+            // Rates of TSCs on different CPUs won't be a big gap
+            // or it's unstable.
             let mut max_cps = std::u64::MIN;
             let mut min_cps = std::u64::MAX;
             let mut sum_cps = 0;
