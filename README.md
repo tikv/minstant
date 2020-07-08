@@ -1,6 +1,6 @@
 # Minstant
 
-A Rust library to measure time with high performance. Mainly cooperate with [Minitrace-Rust](https://github.com/pingcap-incubator/minitrace-rust.git).
+A Rust library to measure time with high performance. Mainly cooperate with [minitrace-rust](https://github.com/pingcap-incubator/minitrace-rust.git).
 
 
 ## Usage
@@ -17,7 +17,8 @@ let start = minstant::now();
 
 let end = minstant::now();
 
-let elapsed_nanos = (end - start) as f64 * 1_000_000_000.0 / cycles_per_second() as f64;
+let cps = minstant::cycles_per_second() as f64;
+let elapsed_nanos = (end - start) as f64 * 1_000_000_000.0 / cps;
 ```
 
 
