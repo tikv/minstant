@@ -159,9 +159,9 @@ lazy_static::lazy_static! {
 /// sync TSCs by ourselves.
 fn is_tsc_stable() -> bool {
     let clock_source =
-        read_to_string("/sys/devices/system/clocksource/clocksource0/current_clocksource");
+        read_to_string("/sys/devices/system/clocksource/clocksource0/available_clocksource");
 
-    clock_source.map(|s| s == "tsc\n").unwrap_or(false)
+    clock_source.map(|s| s.contains("tsc")).unwrap_or(false)
 }
 
 /// Checks if CPU flag contains `constant_tsc`, `nonstop_tsc` and
