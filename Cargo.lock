@@ -271,8 +271,8 @@ name = "minstant"
 version = "0.0.0"
 dependencies = [
  "criterion",
- "lazy_static",
  "libc",
+ "spinlock",
  "wasi",
 ]
 
@@ -462,6 +462,12 @@ dependencies = [
  "ryu",
  "serde",
 ]
+
+[[package]]
+name = "spinlock"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8a1080982bc95e94f4d9ef2827ab127275b41a536c9a095c442b641b49782cc"
 
 [[package]]
 name = "syn"

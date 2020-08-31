@@ -5,7 +5,7 @@ authors = ["zhongzc"]
 edition = "2018"
 
 [dependencies]
-lazy_static = "1.4.0"
+spinlock = "0.1"
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 libc = "0.2"

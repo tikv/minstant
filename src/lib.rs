@@ -3,10 +3,16 @@ mod coarse_now;
 mod tsc_now;
 
 #[inline]
-pub fn tsc_available() -> bool {
+pub fn init() {
+    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    tsc_now::init();
+}
+
+#[inline]
+pub fn is_tsc_available() -> bool {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
     if true {
-        return tsc_now::tsc_available();
+        return tsc_now::is_tsc_available();
     }
 
     false
@@ -15,7 +21,7 @@ pub fn tsc_available() -> bool {
 #[inline]
 pub fn now() -> u64 {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if tsc_available() {
+    if is_tsc_available() {
         return tsc_now::now();
     }
 
@@ -25,7 +31,7 @@ pub fn now() -> u64 {
 #[inline]
 pub fn cycles_per_second() -> u64 {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if tsc_available() {
+    if is_tsc_available() {
         return tsc_now::cycles_per_second();
     }
 
@@ -37,12 +43,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_tsc_available() {
-        let _ = tsc_available();
+    fn test_is_tsc_available() {
+        let _ = is_tsc_available();
     }
 
     #[test]
     fn test_now() {
+        init();
         let mut prev = 0;
         for _ in 0..100 {
             let cur = now();

@@ -11,21 +11,46 @@ use std::time::Instant;
 
 type Error = Box<dyn std::error::Error>;
 
-enum TSCLevel {
-    Stable {
-        cycles_per_second: u64,
-        cycles_from_auchor: u64,
-    },
-    PerCPUStable {
-        cycles_per_second: u64,
-        cycles_from_auchor: Vec<u64>,
-    },
-    Unstable,
+static mut TSC_LEVEL: TSCLevel = TSCLevel::Unstable;
+static mut TSC_AVAILABLE: bool = false;
+static mut INITIALIZED: bool = false;
+static INITLOCK: spinlock::StaticSpinlock = spinlock::STATIC_SPINLOCK_INIT;
+
+pub fn init() {
+    unsafe {
+        if INITIALIZED {
+            return;
+        }
+
+        let _lock = INITLOCK.lock();
+
+        if INITIALIZED {
+            return;
+        }
+
+        TSC_LEVEL = TSCLevel::new();
+        TSC_AVAILABLE = match TSC_LEVEL {
+            TSCLevel::Stable { .. } => true,
+            TSCLevel::PerCPUStable { .. } => true,
+            TSCLevel::Unstable => false,
+        };
+        INITIALIZED = true;
+    }
+}
+
+#[inline(always)]
+pub fn is_tsc_available() -> bool {
+    unsafe { TSC_AVAILABLE }
+}
+
+#[inline(always)]
+fn get_tsc_level() -> &'static TSCLevel {
+    unsafe { &TSC_LEVEL }
 }
 
 #[inline]
-pub(crate) fn now() -> u64 {
-    match &*TSC_LEVEL {
+pub fn now() -> u64 {
+    match get_tsc_level() {
         TSCLevel::Stable {
             cycles_from_auchor, ..
         } => tsc().wrapping_sub(*cycles_from_auchor),
@@ -41,8 +66,8 @@ pub(crate) fn now() -> u64 {
 }
 
 #[inline]
-pub(crate) fn cycles_per_second() -> u64 {
-    match &*TSC_LEVEL {
+pub fn cycles_per_second() -> u64 {
+    match get_tsc_level() {
         TSCLevel::Stable {
             cycles_per_second, ..
         } => *cycles_per_second,
@@ -53,13 +78,20 @@ pub(crate) fn cycles_per_second() -> u64 {
     }
 }
 
-#[inline]
-pub(crate) fn tsc_available() -> bool {
-    *TSC_AVAILABLE
+enum TSCLevel {
+    Stable {
+        cycles_per_second: u64,
+        cycles_from_auchor: u64,
+    },
+    PerCPUStable {
+        cycles_per_second: u64,
+        cycles_from_auchor: Vec<u64>,
+    },
+    Unstable,
 }
 
-lazy_static::lazy_static! {
-    static ref TSC_LEVEL: TSCLevel = {
+impl TSCLevel {
+    fn new() -> Self {
         let auchor = Instant::now();
         if is_tsc_stable() {
             let (cps, cfa) = cycles_per_sec(auchor);
@@ -144,14 +176,7 @@ lazy_static::lazy_static! {
         }
 
         TSCLevel::Unstable
-    };
-    static ref TSC_AVAILABLE: bool = {
-        match &*TSC_LEVEL {
-            TSCLevel::Stable { .. } => true,
-            TSCLevel::PerCPUStable { .. } => true,
-            TSCLevel::Unstable => false,
-        }
-    };
+    }
 }
 
 /// If linux kernel detected TSCs are sync between CPUs, we can
