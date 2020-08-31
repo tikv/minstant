@@ -117,22 +117,19 @@ impl TSCLevel {
 
             // Spread the threads to all CPUs and calculate
             // cycles from auchor separately
-            let handles = cpuids
-                .into_iter()
-                .map(|id| {
-                    std::thread::spawn(move || {
-                        set_affinity(id).unwrap();
+            let handles = cpuids.into_iter().map(|id| {
+                std::thread::spawn(move || {
+                    set_affinity(id).unwrap();
 
-                        // check if cpu id matches IA32_TSC_AUX
-                        let (_, cpuid) = tsc_with_cpuid();
-                        assert_eq!(cpuid, id);
+                    // check if cpu id matches IA32_TSC_AUX
+                    let (_, cpuid) = tsc_with_cpuid();
+                    assert_eq!(cpuid, id);
 
-                        let (cps, cfa) = cycles_per_sec(auchor);
+                    let (cps, cfa) = cycles_per_sec(auchor);
 
-                        (id, cps, cfa)
-                    })
+                    (id, cps, cfa)
                 })
-                .collect::<Vec<_>>();
+            });
 
             // Block and wait for all threads finished
             let results = handles
