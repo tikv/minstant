@@ -14,11 +14,11 @@ type Error = Box<dyn std::error::Error>;
 enum TSCLevel {
     Stable {
         cycles_per_second: u64,
-        cycles_from_auchor: u64,
+        cycles_from_anchor: u64,
     },
     PerCPUStable {
         cycles_per_second: u64,
-        cycles_from_auchor: Vec<u64>,
+        cycles_from_anchor: Vec<u64>,
     },
     Unstable,
 }
@@ -27,14 +27,14 @@ enum TSCLevel {
 pub(crate) fn now() -> u64 {
     match &*TSC_LEVEL {
         TSCLevel::Stable {
-            cycles_from_auchor, ..
-        } => tsc().wrapping_sub(*cycles_from_auchor),
+            cycles_from_anchor, ..
+        } => tsc().wrapping_sub(*cycles_from_anchor),
         TSCLevel::PerCPUStable {
-            cycles_from_auchor, ..
+            cycles_from_anchor, ..
         } => {
             let (tsc, cpuid) = tsc_with_cpuid();
-            let auchor = cycles_from_auchor[cpuid];
-            tsc.wrapping_sub(auchor)
+            let anchor = cycles_from_anchor[cpuid];
+            tsc.wrapping_sub(anchor)
         }
         TSCLevel::Unstable => panic!("tsc is unstable"),
     }
@@ -60,12 +60,12 @@ pub(crate) fn tsc_available() -> bool {
 
 lazy_static::lazy_static! {
     static ref TSC_LEVEL: TSCLevel = {
-        let auchor = Instant::now();
+        let anchor = Instant::now();
         if is_tsc_stable() {
-            let (cps, cfa) = cycles_per_sec(auchor);
+            let (cps, cfa) = cycles_per_sec(anchor);
             return TSCLevel::Stable {
                 cycles_per_second: cps,
-                cycles_from_auchor: cfa,
+                cycles_from_anchor: cfa,
             };
         }
 
@@ -84,7 +84,7 @@ lazy_static::lazy_static! {
             let max_cpu_id = *cpuids.iter().max().unwrap();
 
             // Spread the threads to all CPUs and calculate
-            // cycles from auchor separately
+            // cycles from anchor separately
             let handles = cpuids
                 .into_iter()
                 .map(|id| {
@@ -95,7 +95,7 @@ lazy_static::lazy_static! {
                         let (_, cpuid) = tsc_with_cpuid();
                         assert_eq!(cpuid, id);
 
-                        let (cps, cfa) = cycles_per_sec(auchor);
+                        let (cps, cfa) = cycles_per_sec(anchor);
 
                         (id, cps, cfa)
                     })
@@ -115,7 +115,7 @@ lazy_static::lazy_static! {
             };
 
             // Indexed by CPU ID
-            let mut cycles_from_auchor = vec![0; max_cpu_id + 1];
+            let mut cycles_from_anchor = vec![0; max_cpu_id + 1];
 
             // Rates of TSCs on different CPUs won't be a big gap
             // or it's unstable.
@@ -131,7 +131,7 @@ lazy_static::lazy_static! {
                     min_cps = cps;
                 }
                 sum_cps += cps;
-                cycles_from_auchor[cpuid] = cfa;
+                cycles_from_anchor[cpuid] = cfa;
             }
             if (max_cps - min_cps) as f64 / min_cps as f64 > 0.0005 {
                 return TSCLevel::Unstable;
@@ -139,7 +139,7 @@ lazy_static::lazy_static! {
 
             return TSCLevel::PerCPUStable {
                 cycles_per_second: sum_cps / len as u64,
-                cycles_from_auchor,
+                cycles_from_anchor,
             };
         }
 
@@ -194,15 +194,15 @@ fn is_tsc_percpu_stable() -> bool {
     f().unwrap_or(false)
 }
 
-/// Returns (1) cycles per second and (2) cycles from auchor.
+/// Returns (1) cycles per second and (2) cycles from anchor.
 /// The result of subtracting `cycles_from_anchor` from newly fetched TSC
 /// can be used to
 ///   1. readjust TSC to begin from zero
 ///   2. sync TSCs between all CPUs
-fn cycles_per_sec(auchor: Instant) -> (u64, u64) {
+fn cycles_per_sec(anchor: Instant) -> (u64, u64) {
     let (cps, last_monotonic, last_tsc) = _cycles_per_sec();
-    let nanos_from_auchor = (last_monotonic - auchor).as_nanos();
-    let cycles_flied = cps as f64 * nanos_from_auchor as f64 / 1_000_000_000.0;
+    let nanos_from_anchor = (last_monotonic - anchor).as_nanos();
+    let cycles_flied = cps as f64 * nanos_from_anchor as f64 / 1_000_000_000.0;
     let cycles_from_anchor = last_tsc - cycles_flied.ceil() as u64;
 
     (cps, cycles_from_anchor)
