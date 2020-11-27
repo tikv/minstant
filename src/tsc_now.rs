@@ -99,12 +99,10 @@ lazy_static::lazy_static! {
 
                         (id, cps, cfa)
                     })
-                })
-                .collect::<Vec<_>>();
+                });
 
             // Block and wait for all threads finished
             let results = handles
-                .into_iter()
                 .map(|h| h.join())
                 .collect::<Result<Vec<_>, _>>();
 
@@ -208,7 +206,7 @@ fn cycles_per_sec(anchor: Instant) -> (u64, u64) {
     (cps, cycles_from_anchor)
 }
 
-/// Returns (1) cycles per second, (2) last monotonic time and associated (3) tsc.
+/// Returns (1) cycles per second, (2) last monotonic time and (3) associated tsc.
 fn _cycles_per_sec() -> (u64, Instant, u64) {
     let mut cycles_per_sec;
     let mut last_monotonic;
