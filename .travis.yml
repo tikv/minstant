@@ -1,5 +1,3 @@
-sudo: false
-
 language: rust
 env:
   global:
@@ -10,7 +8,6 @@ arch:
 
 os:
   - linux
-  - osx
 
 rust:
   - nightly
