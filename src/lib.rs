@@ -133,7 +133,14 @@ mod tests {
             let check = move || {
                 let duration_ns_minstant = (now() - cur_cycle) as f64 * *NANOS_PER_CYCLE;
                 let duration_ns_std = Instant::now().duration_since(cur_instant).as_nanos();
-                assert!((duration_ns_std as f64 - duration_ns_minstant).abs() < 5_000_000.0);
+
+                #[cfg(target_os = "windows")]
+                let expect_max_delta = 10_000_000.0;
+                #[cfg(not(target_os = "windows"))]
+                let expect_max_delta = 5_000_000.0;
+
+                let real_delta = (duration_ns_std as f64 - duration_ns_minstant).abs();
+                assert!(real_delta < expect_max_delta, "real delta: {}", real_delta);
             };
             check();
             std::thread::spawn(check).join().expect("join failed");
