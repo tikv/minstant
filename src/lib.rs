@@ -25,10 +25,10 @@ impl Cycle {
 
     pub fn into_unix_time_ns(self, anchor: Anchor) -> u64 {
         if self > anchor.cycle {
-            let forward_ns = (self.0 - anchor.cycle.0) as f64 * *NANOS_PER_CYCLE;
+            let forward_ns = (self.0 - anchor.cycle.0) as f64 * anchor.nanos_per_cycle;
             anchor.unix_time_ns + forward_ns as u64
         } else {
-            let backward_ns = (anchor.cycle.0 - self.0) as f64 * *NANOS_PER_CYCLE;
+            let backward_ns = (anchor.cycle.0 - self.0) as f64 * anchor.nanos_per_cycle;
             anchor.unix_time_ns - backward_ns as u64
         }
     }
@@ -38,6 +38,7 @@ impl Cycle {
 pub struct Anchor {
     pub unix_time_ns: u64,
     pub cycle: Cycle,
+    pub nanos_per_cycle: f64,
 }
 
 impl Default for Anchor {
@@ -57,6 +58,7 @@ impl Anchor {
         Anchor {
             unix_time_ns,
             cycle,
+            nanos_per_cycle: *NANOS_PER_CYCLE,
         }
     }
 }
