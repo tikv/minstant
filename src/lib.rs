@@ -135,7 +135,7 @@ mod tests {
                 let duration_ns_std = Instant::now().duration_since(cur_instant).as_nanos();
 
                 #[cfg(target_os = "windows")]
-                let expect_max_delta = 10_000_000.0;
+                let expect_max_delta = 20_000_000.0;
                 #[cfg(not(target_os = "windows"))]
                 let expect_max_delta = 5_000_000.0;
 
