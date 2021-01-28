@@ -1,4 +1,4 @@
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_now(c: &mut Criterion) {
     c.bench_function("now", |b| {
@@ -6,5 +6,14 @@ fn bench_now(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_now);
+fn bench_unix_time(c: &mut Criterion) {
+    let anchor = minstant::Anchor::new();
+    c.bench_function("unix_time", |b| {
+        b.iter(|| {
+            black_box(minstant::Cycle::now().into_unix_time_ns(anchor));
+        });
+    });
+}
+
+criterion_group!(benches, bench_now, bench_unix_time);
 criterion_main!(benches);
