@@ -1,7 +1,7 @@
 # Minstant
 [![Actions Status](https://github.com/zhongzc/minstant/workflows/CI/badge.svg)](https://github.com/zhongzc/minstant/actions)
-[![LICENSE](https://img.shields.io/github/license/zhongzc/minstant.svg)](https://github.com/zhongzc/minstant/blob/master/LICENSE)
 [![Build Status](https://travis-ci.com/zhongzc/minstant.svg?branch=master)](https://travis-ci.com/zhongzc/minstant)
+[![LICENSE](https://img.shields.io/github/license/zhongzc/minstant.svg)](https://github.com/zhongzc/minstant/blob/master/LICENSE)
 
 A Rust library to measure time with high performance.
 
@@ -10,7 +10,7 @@ A Rust library to measure time with high performance.
 
 ```toml
 [dependencies]
-minstant = { git = "https://github.com/zhongzc/minstant.git" }
+minstant = { git = "https://github.com/zhongzc/minstant.git", branch = "master" }
 ```
 
 ```rust
