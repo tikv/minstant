@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 mod coarse_now;
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
@@ -25,22 +25,20 @@ impl Cycle {
 
     pub fn into_unix_time_ns(self, anchor: Anchor) -> u64 {
         if self > anchor.cycle {
-            let forward_ns = ((self.0 - anchor.cycle.0) as f64 * 1_000_000_000.0
-                / anchor.cycles_per_second as f64) as u64;
-            anchor.unix_time_ns + forward_ns
+            let forward_ns = (self.0 - anchor.cycle.0) as f64 * anchor.nanos_per_cycle;
+            anchor.unix_time_ns + forward_ns as u64
         } else {
-            let backward_ns = ((anchor.cycle.0 - self.0) as f64 * 1_000_000_000.0
-                / anchor.cycles_per_second as f64) as u64;
-            anchor.unix_time_ns - backward_ns
+            let backward_ns = (anchor.cycle.0 - self.0) as f64 * anchor.nanos_per_cycle;
+            anchor.unix_time_ns - backward_ns as u64
         }
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 pub struct Anchor {
     pub unix_time_ns: u64,
     pub cycle: Cycle,
-    pub cycles_per_second: u64,
+    pub nanos_per_cycle: f64,
 }
 
 impl Anchor {
@@ -54,7 +52,7 @@ impl Anchor {
         Anchor {
             unix_time_ns,
             cycle,
-            cycles_per_second: cycles_per_second(),
+            nanos_per_cycle: *NANOS_PER_CYCLE,
         }
     }
 }
@@ -79,14 +77,18 @@ pub fn now() -> u64 {
     coarse_now::now()
 }
 
+lazy_static::lazy_static! {
+    pub static ref NANOS_PER_CYCLE: f64 = nanos_per_cycle();
+}
+
 #[inline]
-pub fn cycles_per_second() -> u64 {
+fn nanos_per_cycle() -> f64 {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
     if tsc_available() {
-        return tsc_now::cycles_per_second();
+        return 1_000_000_000.0 / tsc_now::cycles_per_second() as f64;
     }
 
-    1_000_000_000
+    1.0
 }
 
 #[cfg(test)]
@@ -109,7 +111,7 @@ mod tests {
     }
 
     #[test]
-    fn test_cycles_per_second() {
-        let _ = cycles_per_second();
+    fn test_nanos_per_cycle() {
+        let _ = nanos_per_cycle();
     }
 }

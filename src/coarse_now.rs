@@ -83,12 +83,7 @@ pub(crate) fn now() -> u64 {
 #[inline]
 pub(crate) fn now() -> u64 {
     use wasi::wasi_unstable::{clock_time_get, CLOCK_MONOTONIC};
-    clock_time_get(CLOCK_MONOTONIC, 1_000_000).expect("Clock not available")
-}
-
-#[cfg(not(any(windows, unix, target_os = "wasi")))]
-pub(crate) fn now() -> u64 {
-    panic!("Unsupported target");
+    clock_time_get(CLOCK_MONOTONIC, 1_000_000).unwrap_or(0)
 }
 
 #[cfg(test)]
