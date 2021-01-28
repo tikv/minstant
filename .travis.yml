@@ -1,18 +1,19 @@
+sudo: false
+
 language: rust
+env:
+  global:
+    - RUST_BACKTRACE=1
 
 arch:
-  - amd64
-  - ppc64le
   - arm64
 
 os:
   - linux
   - osx
-  - windows
 
 rust:
   - nightly
-  - beta
   - stable
 
 script:
