@@ -100,6 +100,8 @@ fn nanos_per_cycle() -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::Rng;
+    use std::time::{Duration, Instant};
 
     #[test]
     fn test_tsc_available() {
@@ -107,9 +109,9 @@ mod tests {
     }
 
     #[test]
-    fn test_now() {
+    fn test_monotonic() {
         let mut prev = 0;
-        for _ in 0..100 {
+        for _ in 0..10000 {
             let cur = now();
             assert!(cur >= prev);
             prev = cur;
@@ -119,5 +121,22 @@ mod tests {
     #[test]
     fn test_nanos_per_cycle() {
         let _ = nanos_per_cycle();
+    }
+
+    #[test]
+    fn test_duration() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..10 {
+            let cur_cycle = now();
+            let cur_instant = Instant::now();
+            std::thread::sleep(Duration::from_millis(rng.gen_range(100..500)));
+            let check = move || {
+                let duration_ns_minstant = (now() - cur_cycle) as f64 * *NANOS_PER_CYCLE;
+                let duration_ns_std = Instant::now().duration_since(cur_instant).as_nanos();
+                assert!((duration_ns_std as f64 - duration_ns_minstant).abs() < 5_000_000.0);
+            };
+            check();
+            std::thread::spawn(check).join().expect("join failed");
+        }
     }
 }
