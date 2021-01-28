@@ -1,6 +1,6 @@
 # Minstant
 [![Actions Status](https://github.com/zhongzc/minstant/workflows/CI/badge.svg)](https://github.com/zhongzc/minstant/actions)
-[![Build Status](https://travis-ci.com/zhongzc/minstant.svg?branch=master)](https://travis-ci.com/zhongzc/minstant)
+[![Build Status](https://travis-ci.org/zhongzc/minstant.svg?branch=master)](https://travis-ci.org/zhongzc/minstant)
 [![LICENSE](https://img.shields.io/github/license/zhongzc/minstant.svg)](https://github.com/zhongzc/minstant/blob/master/LICENSE)
 
 A Rust library to measure time with high performance.
