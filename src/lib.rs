@@ -1,4 +1,4 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 mod coarse_now;
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
@@ -39,6 +39,12 @@ pub struct Anchor {
     pub unix_time_ns: u64,
     pub cycle: Cycle,
     pub nanos_per_cycle: f64,
+}
+
+impl Default for Anchor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Anchor {
