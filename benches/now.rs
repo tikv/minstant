@@ -6,6 +6,12 @@ fn bench_now(c: &mut Criterion) {
     });
 }
 
+fn bench_std_now(c: &mut Criterion) {
+    c.bench_function("std now", |b| {
+        b.iter(std::time::Instant::now);
+    });
+}
+
 fn bench_unix_time(c: &mut Criterion) {
     let anchor = minstant::Anchor::new();
     c.bench_function("unix_time", |b| {
@@ -15,5 +21,5 @@ fn bench_unix_time(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_now, bench_unix_time);
+criterion_group!(benches, bench_now, bench_std_now, bench_unix_time);
 criterion_main!(benches);
