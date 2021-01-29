@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        rust: [stable, nightly]
     env:
       RUST_BACKTRACE: 1
     steps:
@@ -28,8 +29,8 @@ jobs:
     - name: Lints
       run: cargo clippy --all-targets --all-features -- --deny warnings
     - name: Build
-      run: cargo build --verbose --all
+      run: cargo build --workspace --all-targets
     - name: Run tests
-      run: cargo test --verbose --all
+      run: cargo test --workspace --all-targets -- --nocapture
     - name: Run benches
-      run: cargo bench --verbose --all
+      run: cargo bench --workspace --all-targets

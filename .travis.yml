@@ -18,6 +18,6 @@ script:
   - rustup component add clippy
   - cargo fmt --all -- --check
   - cargo clippy --all-targets --all-features -- --deny warnings
-  - cargo build --verbose --all
-  - cargo test --verbose --all
-  - cargo bench --verbose --all
+  - cargo build --workspace --all-targets
+  - cargo test --workspace --all-targets -- --nocapture
+  - cargo bench --workspace --all-targets
