@@ -13,6 +13,6 @@ fn test_macro() {
     let mut statistic = 0;
     heavy_load(&mut statistic);
     let std_nanos = start.elapsed().as_nanos() as i64;
-    let minstant_nanos = (statistic as f64 * *minstant::NANOS_PER_CYCLE) as i64;
+    let minstant_nanos = (statistic as f64 * minstant::nanos_per_cycle()) as i64;
     assert!((minstant_nanos - std_nanos).abs() < 10000);
 }

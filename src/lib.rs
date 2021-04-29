@@ -1,46 +1,25 @@
 // Copyright 2021 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::time::{SystemTime, UNIX_EPOCH};
-
 mod coarse_now;
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tsc_now;
 
-#[derive(Copy, Clone, Default, Ord, PartialOrd, Eq, PartialEq, Debug)]
-pub struct Cycle(pub u64);
+pub use minstant_macro::timing;
 
-impl Cycle {
-    #[inline]
-    pub fn now() -> Self {
-        Self(now())
-    }
+use std::time::{SystemTime, UNIX_EPOCH};
 
-    #[inline]
-    pub fn zero() -> Self {
-        Self(0)
-    }
+static mut NANOS_PER_CYCLE: f64 = 1.0;
 
-    #[inline]
-    pub fn is_zero(&self) -> bool {
-        self.0 == 0
-    }
-
-    pub fn into_unix_time_ns(self, anchor: Anchor) -> u64 {
-        if self > anchor.cycle {
-            let forward_ns = (self.0 - anchor.cycle.0) as f64 * anchor.nanos_per_cycle;
-            anchor.unix_time_ns + forward_ns as u64
-        } else {
-            let backward_ns = (anchor.cycle.0 - self.0) as f64 * anchor.nanos_per_cycle;
-            anchor.unix_time_ns - backward_ns as u64
-        }
-    }
+#[inline]
+pub fn nanos_per_cycle() -> f64 {
+    unsafe { NANOS_PER_CYCLE }
 }
 
 #[derive(Copy, Clone)]
 pub struct Anchor {
-    pub unix_time_ns: u64,
-    pub cycle: Cycle,
-    pub nanos_per_cycle: f64,
+    unix_time_ns: u64,
+    cycle: u64,
+    nanos_per_cycle: f64,
 }
 
 impl Default for Anchor {
@@ -52,15 +31,24 @@ impl Default for Anchor {
 impl Anchor {
     #[inline]
     pub fn new() -> Anchor {
-        let cycle = Cycle(now());
         let unix_time_ns = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("unexpected time drift")
             .as_nanos() as u64;
         Anchor {
             unix_time_ns,
-            cycle,
-            nanos_per_cycle: *NANOS_PER_CYCLE,
+            cycle: now(),
+            nanos_per_cycle: unsafe { NANOS_PER_CYCLE },
+        }
+    }
+
+    pub fn cycle_to_unix_nanos(&self, cycle: u64) -> u64 {
+        if cycle > self.cycle {
+            let forward_ns = (cycle - self.cycle) as f64 * self.nanos_per_cycle;
+            self.unix_time_ns + forward_ns as u64
+        } else {
+            let backward_ns = (self.cycle - cycle) as f64 * self.nanos_per_cycle;
+            self.unix_time_ns - backward_ns as u64
         }
     }
 }
@@ -83,20 +71,6 @@ pub fn now() -> u64 {
     }
 
     coarse_now::now()
-}
-
-lazy_static::lazy_static! {
-    pub static ref NANOS_PER_CYCLE: f64 = nanos_per_cycle();
-}
-
-#[inline]
-fn nanos_per_cycle() -> f64 {
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if tsc_available() {
-        return 1_000_000_000.0 / tsc_now::cycles_per_second() as f64;
-    }
-
-    1.0
 }
 
 #[cfg(test)]
@@ -133,7 +107,7 @@ mod tests {
             let cur_instant = Instant::now();
             std::thread::sleep(Duration::from_millis(rng.gen_range(100..500)));
             let check = move || {
-                let duration_ns_minstant = (now() - cur_cycle) as f64 * *NANOS_PER_CYCLE;
+                let duration_ns_minstant = (now() - cur_cycle) as f64 * unsafe { NANOS_PER_CYCLE };
                 let duration_ns_std = Instant::now().duration_since(cur_instant).as_nanos();
 
                 #[cfg(target_os = "windows")]

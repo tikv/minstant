@@ -5,8 +5,8 @@ authors = ["zhongzc"]
 edition = "2018"
 
 [dependencies]
-lazy_static = "1.4.0"
 ctor = "0.1.20"
+minstant_macro = { path = "minstant_macro" }
 
 [workspace]
 members = [ "minstant_macro" ]
