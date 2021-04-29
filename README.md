@@ -1,7 +1,7 @@
 # Minstant
-[![Actions Status](https://github.com/zhongzc/minstant/workflows/CI/badge.svg)](https://github.com/zhongzc/minstant/actions)
-[![Build Status](https://travis-ci.org/zhongzc/minstant.svg?branch=master)](https://travis-ci.org/zhongzc/minstant)
-[![LICENSE](https://img.shields.io/github/license/zhongzc/minstant.svg)](https://github.com/zhongzc/minstant/blob/master/LICENSE)
+[![Actions Status](https://github.com/tikv/minstant/workflows/CI/badge.svg)](https://github.com/tikv/minstant/actions)
+[![Build Status](https://travis-ci.org/tikv/minstant.svg?branch=master)](https://travis-ci.org/tikv/minstant)
+[![LICENSE](https://img.shields.io/github/license/tikv/minstant.svg)](https://github.com/tikv/minstant/blob/master/LICENSE)
 
 A Rust library to measure time with high performance.
 
@@ -10,7 +10,7 @@ A Rust library to measure time with high performance.
 
 ```toml
 [dependencies]
-minstant = { git = "https://github.com/zhongzc/minstant.git", branch = "master" }
+minstant = { git = "https://github.com/tikv/minstant.git", branch = "master" }
 ```
 
 ```rust
@@ -20,7 +20,7 @@ let start = minstant::now();
 
 let end = minstant::now();
 
-let elapsed_nanos = (end - start) as f64 * *minstant::NANOS_PER_CYCLE;
+let elapsed_nanos = (end - start) as f64 * minstant::nanos_per_cycle();
 ```
 
 

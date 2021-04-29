@@ -1,11 +1,15 @@
 [package]
 name = "minstant"
-version = "0.0.1"
-authors = ["zhongzc"]
+version = "0.0.2"
+authors = ["The TiKV Authors"]
 edition = "2018"
 
 [dependencies]
-lazy_static = "1.4.0"
+ctor = "0.1.20"
+minstant_macro = { path = "minstant_macro" }
+
+[workspace]
+members = [ "minstant_macro" ]
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 libc = "0.2"

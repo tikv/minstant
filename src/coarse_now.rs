@@ -1,5 +1,6 @@
-//! Get instant value in nanosecond unit as fast as possible
-//! but less precise.
+// Copyright 2021 TiKV Project Authors. Licensed under Apache-2.0.
+
+//! Get instant value in nanosecond unit as fast as possible but less precise.
 
 #[allow(unused_imports)]
 use std::mem::MaybeUninit;

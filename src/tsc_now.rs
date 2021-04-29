@@ -1,6 +1,6 @@
-//! This module will be compiled when it's either
-//!     linux + x86
-//!  or linux + x86_64.
+// Copyright 2021 TiKV Project Authors. Licensed under Apache-2.0.
+
+//! This module will be compiled when it's either linux_x86 or linux_x86_64.
 
 use libc::{cpu_set_t, sched_setaffinity, CPU_SET};
 use std::fs::read_to_string;
@@ -10,6 +10,25 @@ use std::mem::{size_of, zeroed, MaybeUninit};
 use std::time::Instant;
 
 type Error = Box<dyn std::error::Error>;
+
+static mut TSC_AVAILABLE: bool = false;
+static mut TSC_LEVEL: TSCLevel = TSCLevel::Unstable;
+
+#[ctor::ctor]
+unsafe fn init() {
+    let tsc_level = TSCLevel::get();
+    let tsc_available = match &tsc_level {
+        TSCLevel::Stable { .. } => true,
+        TSCLevel::PerCPUStable { .. } => true,
+        TSCLevel::Unstable => false,
+    };
+    if tsc_available {
+        super::NANOS_PER_CYCLE = 1_000_000_000.0 / tsc_level.cycles_per_second() as f64;
+    }
+    TSC_AVAILABLE = tsc_available;
+    TSC_LEVEL = tsc_level;
+    std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+}
 
 enum TSCLevel {
     Stable {
@@ -23,43 +42,8 @@ enum TSCLevel {
     Unstable,
 }
 
-#[inline]
-pub(crate) fn now() -> u64 {
-    match &*TSC_LEVEL {
-        TSCLevel::Stable {
-            cycles_from_anchor, ..
-        } => tsc().wrapping_sub(*cycles_from_anchor),
-        TSCLevel::PerCPUStable {
-            cycles_from_anchor, ..
-        } => {
-            let (tsc, cpuid) = tsc_with_cpuid();
-            let anchor = cycles_from_anchor[cpuid];
-            tsc.wrapping_sub(anchor)
-        }
-        TSCLevel::Unstable => panic!("tsc is unstable"),
-    }
-}
-
-#[inline]
-pub(crate) fn cycles_per_second() -> u64 {
-    match &*TSC_LEVEL {
-        TSCLevel::Stable {
-            cycles_per_second, ..
-        } => *cycles_per_second,
-        TSCLevel::PerCPUStable {
-            cycles_per_second, ..
-        } => *cycles_per_second,
-        TSCLevel::Unstable => panic!("tsc is unstable"),
-    }
-}
-
-#[inline]
-pub(crate) fn tsc_available() -> bool {
-    *TSC_AVAILABLE
-}
-
-lazy_static::lazy_static! {
-    static ref TSC_LEVEL: TSCLevel = {
+impl TSCLevel {
+    fn get() -> TSCLevel {
         let anchor = Instant::now();
         if is_tsc_stable() {
             let (cps, cfa) = cycles_per_sec(anchor);
@@ -85,26 +69,22 @@ lazy_static::lazy_static! {
 
             // Spread the threads to all CPUs and calculate
             // cycles from anchor separately
-            let handles = cpuids
-                .into_iter()
-                .map(|id| {
-                    std::thread::spawn(move || {
-                        set_affinity(id).unwrap();
+            let handles = cpuids.into_iter().map(|id| {
+                std::thread::spawn(move || {
+                    set_affinity(id).unwrap();
 
-                        // check if cpu id matches IA32_TSC_AUX
-                        let (_, cpuid) = tsc_with_cpuid();
-                        assert_eq!(cpuid, id);
+                    // check if cpu id matches IA32_TSC_AUX
+                    let (_, cpuid) = tsc_with_cpuid();
+                    assert_eq!(cpuid, id);
 
-                        let (cps, cfa) = cycles_per_sec(anchor);
+                    let (cps, cfa) = cycles_per_sec(anchor);
 
-                        (id, cps, cfa)
-                    })
-                });
+                    (id, cps, cfa)
+                })
+            });
 
             // Block and wait for all threads finished
-            let results = handles
-                .map(|h| h.join())
-                .collect::<Result<Vec<_>, _>>();
+            let results = handles.map(|h| h.join()).collect::<Result<Vec<_>, _>>();
 
             let results = if let Ok(results) = results {
                 results
@@ -142,14 +122,42 @@ lazy_static::lazy_static! {
         }
 
         TSCLevel::Unstable
-    };
-    static ref TSC_AVAILABLE: bool = {
-        match &*TSC_LEVEL {
-            TSCLevel::Stable { .. } => true,
-            TSCLevel::PerCPUStable { .. } => true,
-            TSCLevel::Unstable => false,
+    }
+
+    #[inline]
+    fn cycles_per_second(&self) -> u64 {
+        match self {
+            TSCLevel::Stable {
+                cycles_per_second, ..
+            } => *cycles_per_second,
+            TSCLevel::PerCPUStable {
+                cycles_per_second, ..
+            } => *cycles_per_second,
+            TSCLevel::Unstable => panic!("tsc is unstable"),
         }
-    };
+    }
+}
+
+#[inline]
+pub(crate) fn tsc_available() -> bool {
+    unsafe { TSC_AVAILABLE }
+}
+
+#[inline]
+pub(crate) fn now() -> u64 {
+    match unsafe { &TSC_LEVEL } {
+        TSCLevel::Stable {
+            cycles_from_anchor, ..
+        } => tsc().wrapping_sub(*cycles_from_anchor),
+        TSCLevel::PerCPUStable {
+            cycles_from_anchor, ..
+        } => {
+            let (tsc, cpuid) = tsc_with_cpuid();
+            let anchor = cycles_from_anchor[cpuid];
+            tsc.wrapping_sub(anchor)
+        }
+        TSCLevel::Unstable => panic!("tsc is unstable"),
+    }
 }
 
 /// If linux kernel detected TSCs are sync between CPUs, we can

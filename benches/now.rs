@@ -16,7 +16,7 @@ fn bench_unix_time(c: &mut Criterion) {
     let anchor = minstant::Anchor::new();
     c.bench_function("unix_time", |b| {
         b.iter(|| {
-            black_box(minstant::Cycle::now().into_unix_time_ns(anchor));
+            black_box(anchor.cycle_to_unix_nanos(minstant::now()));
         });
     });
 }
