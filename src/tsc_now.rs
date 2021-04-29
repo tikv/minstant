@@ -1,6 +1,6 @@
-//! This module will be compiled when it's either
-//!     linux + x86
-//!  or linux + x86_64.
+// Copyright 2021 TiKV Project Authors. Licensed under Apache-2.0.
+
+//! This module will be compiled when it's either linux_x86 or linux_x86_64.
 
 use libc::{cpu_set_t, sched_setaffinity, CPU_SET};
 use std::fs::read_to_string;
@@ -10,6 +10,102 @@ use std::mem::{size_of, zeroed, MaybeUninit};
 use std::time::Instant;
 
 type Error = Box<dyn std::error::Error>;
+
+static mut TSC_AVAILABLE: bool = false;
+static mut TSC_LEVEL: TSCLevel = TSCLevel::Unstable;
+
+#[ctor::ctor]
+unsafe fn init() {
+    let tsc_level = init_tsc_level();
+    TSC_AVAILABLE = match &tsc_level {
+        TSCLevel::Stable { .. } => true,
+        TSCLevel::PerCPUStable { .. } => true,
+        TSCLevel::Unstable => false,
+    };
+    TSC_LEVEL = tsc_level;
+    std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+}
+
+fn init_tsc_level() -> TSCLevel {
+    let anchor = Instant::now();
+    if is_tsc_stable() {
+        let (cps, cfa) = cycles_per_sec(anchor);
+        return TSCLevel::Stable {
+            cycles_per_second: cps,
+            cycles_from_anchor: cfa,
+        };
+    }
+
+    if is_tsc_percpu_stable() {
+        // Retrieve the IDs of all active CPUs.
+        let cpuids = if let Ok(cpuids) = available_cpus() {
+            if cpuids.is_empty() {
+                return TSCLevel::Unstable;
+            }
+
+            cpuids
+        } else {
+            return TSCLevel::Unstable;
+        };
+
+        let max_cpu_id = *cpuids.iter().max().unwrap();
+
+        // Spread the threads to all CPUs and calculate
+        // cycles from anchor separately
+        let handles = cpuids.into_iter().map(|id| {
+            std::thread::spawn(move || {
+                set_affinity(id).unwrap();
+
+                // check if cpu id matches IA32_TSC_AUX
+                let (_, cpuid) = tsc_with_cpuid();
+                assert_eq!(cpuid, id);
+
+                let (cps, cfa) = cycles_per_sec(anchor);
+
+                (id, cps, cfa)
+            })
+        });
+
+        // Block and wait for all threads finished
+        let results = handles.map(|h| h.join()).collect::<Result<Vec<_>, _>>();
+
+        let results = if let Ok(results) = results {
+            results
+        } else {
+            return TSCLevel::Unstable;
+        };
+
+        // Indexed by CPU ID
+        let mut cycles_from_anchor = vec![0; max_cpu_id + 1];
+
+        // Rates of TSCs on different CPUs won't be a big gap
+        // or it's unstable.
+        let mut max_cps = std::u64::MIN;
+        let mut min_cps = std::u64::MAX;
+        let mut sum_cps = 0;
+        let len = results.len();
+        for (cpuid, cps, cfa) in results {
+            if cps > max_cps {
+                max_cps = cps;
+            }
+            if cps < min_cps {
+                min_cps = cps;
+            }
+            sum_cps += cps;
+            cycles_from_anchor[cpuid] = cfa;
+        }
+        if (max_cps - min_cps) as f64 / min_cps as f64 > 0.0005 {
+            return TSCLevel::Unstable;
+        }
+
+        return TSCLevel::PerCPUStable {
+            cycles_per_second: sum_cps / len as u64,
+            cycles_from_anchor,
+        };
+    }
+
+    TSCLevel::Unstable
+}
 
 enum TSCLevel {
     Stable {
@@ -25,7 +121,7 @@ enum TSCLevel {
 
 #[inline]
 pub(crate) fn now() -> u64 {
-    match &*TSC_LEVEL {
+    match unsafe { &TSC_LEVEL } {
         TSCLevel::Stable {
             cycles_from_anchor, ..
         } => tsc().wrapping_sub(*cycles_from_anchor),
@@ -42,7 +138,7 @@ pub(crate) fn now() -> u64 {
 
 #[inline]
 pub(crate) fn cycles_per_second() -> u64 {
-    match &*TSC_LEVEL {
+    match unsafe { &TSC_LEVEL } {
         TSCLevel::Stable {
             cycles_per_second, ..
         } => *cycles_per_second,
@@ -55,101 +151,7 @@ pub(crate) fn cycles_per_second() -> u64 {
 
 #[inline]
 pub(crate) fn tsc_available() -> bool {
-    *TSC_AVAILABLE
-}
-
-lazy_static::lazy_static! {
-    static ref TSC_LEVEL: TSCLevel = {
-        let anchor = Instant::now();
-        if is_tsc_stable() {
-            let (cps, cfa) = cycles_per_sec(anchor);
-            return TSCLevel::Stable {
-                cycles_per_second: cps,
-                cycles_from_anchor: cfa,
-            };
-        }
-
-        if is_tsc_percpu_stable() {
-            // Retrieve the IDs of all active CPUs.
-            let cpuids = if let Ok(cpuids) = available_cpus() {
-                if cpuids.is_empty() {
-                    return TSCLevel::Unstable;
-                }
-
-                cpuids
-            } else {
-                return TSCLevel::Unstable;
-            };
-
-            let max_cpu_id = *cpuids.iter().max().unwrap();
-
-            // Spread the threads to all CPUs and calculate
-            // cycles from anchor separately
-            let handles = cpuids
-                .into_iter()
-                .map(|id| {
-                    std::thread::spawn(move || {
-                        set_affinity(id).unwrap();
-
-                        // check if cpu id matches IA32_TSC_AUX
-                        let (_, cpuid) = tsc_with_cpuid();
-                        assert_eq!(cpuid, id);
-
-                        let (cps, cfa) = cycles_per_sec(anchor);
-
-                        (id, cps, cfa)
-                    })
-                });
-
-            // Block and wait for all threads finished
-            let results = handles
-                .map(|h| h.join())
-                .collect::<Result<Vec<_>, _>>();
-
-            let results = if let Ok(results) = results {
-                results
-            } else {
-                return TSCLevel::Unstable;
-            };
-
-            // Indexed by CPU ID
-            let mut cycles_from_anchor = vec![0; max_cpu_id + 1];
-
-            // Rates of TSCs on different CPUs won't be a big gap
-            // or it's unstable.
-            let mut max_cps = std::u64::MIN;
-            let mut min_cps = std::u64::MAX;
-            let mut sum_cps = 0;
-            let len = results.len();
-            for (cpuid, cps, cfa) in results {
-                if cps > max_cps {
-                    max_cps = cps;
-                }
-                if cps < min_cps {
-                    min_cps = cps;
-                }
-                sum_cps += cps;
-                cycles_from_anchor[cpuid] = cfa;
-            }
-            if (max_cps - min_cps) as f64 / min_cps as f64 > 0.0005 {
-                return TSCLevel::Unstable;
-            }
-
-            return TSCLevel::PerCPUStable {
-                cycles_per_second: sum_cps / len as u64,
-                cycles_from_anchor,
-            };
-        }
-
-        TSCLevel::Unstable
-    };
-    static ref TSC_AVAILABLE: bool = {
-        match &*TSC_LEVEL {
-            TSCLevel::Stable { .. } => true,
-            TSCLevel::PerCPUStable { .. } => true,
-            TSCLevel::Unstable => false,
-        }
-    };
+    unsafe { TSC_AVAILABLE }
 }
 
 /// If linux kernel detected TSCs are sync between CPUs, we can
