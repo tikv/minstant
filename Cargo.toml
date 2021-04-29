@@ -1,7 +1,7 @@
 [package]
 name = "minstant"
-version = "0.0.1"
-authors = ["zhongzc"]
+version = "0.0.2"
+authors = ["The TiKV Authors"]
 edition = "2018"
 
 [dependencies]
