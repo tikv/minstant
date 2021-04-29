@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        rust: stable
+        rust: [stable]
     env:
       RUST_BACKTRACE: 1
     steps:
