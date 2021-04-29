@@ -10,7 +10,6 @@ os:
   - linux
 
 rust:
-  - nightly
   - stable
 
 script:
