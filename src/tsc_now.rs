@@ -3,16 +3,27 @@
 //! This module will be compiled when it's either linux_x86 or linux_x86_64.
 
 use libc::{cpu_set_t, sched_setaffinity, CPU_SET};
-use std::fs::read_to_string;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::mem::{size_of, zeroed, MaybeUninit};
 use std::time::Instant;
+use std::{cell::UnsafeCell, fs::read_to_string};
 
 type Error = Box<dyn std::error::Error>;
 
-static mut TSC_AVAILABLE: bool = false;
-static mut TSC_LEVEL: TSCLevel = TSCLevel::Unstable;
+static TSC_STATE: TSCState = TSCState {
+    tsc_available: UnsafeCell::new(false),
+    tsc_level: UnsafeCell::new(TSCLevel::Unstable),
+    nanos_per_cycle: UnsafeCell::new(1.0),
+};
+
+struct TSCState {
+    tsc_available: UnsafeCell<bool>,
+    tsc_level: UnsafeCell<TSCLevel>,
+    nanos_per_cycle: UnsafeCell<f64>,
+}
+
+unsafe impl Sync for TSCState {}
 
 #[ctor::ctor]
 unsafe fn init() {
@@ -23,11 +34,38 @@ unsafe fn init() {
         TSCLevel::Unstable => false,
     };
     if tsc_available {
-        super::NANOS_PER_CYCLE = 1_000_000_000.0 / tsc_level.cycles_per_second() as f64;
+        *TSC_STATE.nanos_per_cycle.get() = 1_000_000_000.0 / tsc_level.cycles_per_second() as f64;
     }
-    TSC_AVAILABLE = tsc_available;
-    TSC_LEVEL = tsc_level;
+    *TSC_STATE.tsc_available.get() = tsc_available;
+    *TSC_STATE.tsc_level.get() = tsc_level;
     std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
+}
+
+#[inline]
+pub(crate) fn tsc_available() -> bool {
+    unsafe { *TSC_STATE.tsc_available.get() }
+}
+
+#[inline]
+pub(crate) fn nanos_per_cycle() -> f64 {
+    unsafe { *TSC_STATE.nanos_per_cycle.get() }
+}
+
+#[inline]
+pub(crate) fn now() -> u64 {
+    match unsafe { &*TSC_STATE.tsc_level.get() } {
+        TSCLevel::Stable {
+            cycles_from_anchor, ..
+        } => tsc().wrapping_sub(*cycles_from_anchor),
+        TSCLevel::PerCPUStable {
+            cycles_from_anchor, ..
+        } => {
+            let (tsc, cpuid) = tsc_with_cpuid();
+            let anchor = cycles_from_anchor[cpuid];
+            tsc.wrapping_sub(anchor)
+        }
+        TSCLevel::Unstable => panic!("tsc is unstable"),
+    }
 }
 
 enum TSCLevel {
@@ -135,28 +173,6 @@ impl TSCLevel {
             } => *cycles_per_second,
             TSCLevel::Unstable => panic!("tsc is unstable"),
         }
-    }
-}
-
-#[inline]
-pub(crate) fn tsc_available() -> bool {
-    unsafe { TSC_AVAILABLE }
-}
-
-#[inline]
-pub(crate) fn now() -> u64 {
-    match unsafe { &TSC_LEVEL } {
-        TSCLevel::Stable {
-            cycles_from_anchor, ..
-        } => tsc().wrapping_sub(*cycles_from_anchor),
-        TSCLevel::PerCPUStable {
-            cycles_from_anchor, ..
-        } => {
-            let (tsc, cpuid) = tsc_with_cpuid();
-            let anchor = cycles_from_anchor[cpuid];
-            tsc.wrapping_sub(anchor)
-        }
-        TSCLevel::Unstable => panic!("tsc is unstable"),
     }
 }
 
