@@ -8,11 +8,42 @@ pub use minstant_macro::timing;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-static mut NANOS_PER_CYCLE: f64 = 1.0;
+#[inline]
+pub fn now() -> u64 {
+    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    if tsc_available() {
+        tsc_now::now()
+    } else {
+        coarse_now::now()
+    }
+    #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+    {
+        coarse_now::now()
+    }
+}
+
+#[inline]
+pub fn tsc_available() -> bool {
+    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        tsc_now::tsc_available()
+    }
+    #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+    {
+        false
+    }
+}
 
 #[inline]
 pub fn nanos_per_cycle() -> f64 {
-    unsafe { NANOS_PER_CYCLE }
+    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        tsc_now::nanos_per_cycle()
+    }
+    #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+    {
+        1.0
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -38,7 +69,7 @@ impl Anchor {
         Anchor {
             unix_time_ns,
             cycle: now(),
-            nanos_per_cycle: unsafe { NANOS_PER_CYCLE },
+            nanos_per_cycle: nanos_per_cycle(),
         }
     }
 
@@ -51,26 +82,6 @@ impl Anchor {
             self.unix_time_ns - backward_ns as u64
         }
     }
-}
-
-#[inline]
-pub fn tsc_available() -> bool {
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if true {
-        return tsc_now::tsc_available();
-    }
-
-    false
-}
-
-#[inline]
-pub fn now() -> u64 {
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if tsc_available() {
-        return tsc_now::now();
-    }
-
-    coarse_now::now()
 }
 
 #[cfg(test)]
@@ -107,7 +118,7 @@ mod tests {
             let cur_instant = Instant::now();
             std::thread::sleep(Duration::from_millis(rng.gen_range(100..500)));
             let check = move || {
-                let duration_ns_minstant = (now() - cur_cycle) as f64 * unsafe { NANOS_PER_CYCLE };
+                let duration_ns_minstant = (now() - cur_cycle) as f64 * nanos_per_cycle();
                 let duration_ns_std = Instant::now().duration_since(cur_instant).as_nanos();
 
                 #[cfg(target_os = "windows")]

@@ -7,7 +7,7 @@ use proc_macro_error::proc_macro_error;
 #[proc_macro_error]
 pub fn timing(args: TokenStream, item: TokenStream) -> TokenStream {
     let input = syn::parse_macro_input!(item as syn::ItemFn);
-    let handle_result = syn::parse_macro_input!(args as syn::Expr);
+    let handle_result = syn::parse_macro_input!(args as syn::ExprClosure);
 
     let syn::ItemFn {
         attrs,
