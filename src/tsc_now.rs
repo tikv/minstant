@@ -3,6 +3,7 @@
 //! This module will be compiled when it's either linux_x86 or linux_x86_64.
 
 use libc::{cpu_set_t, sched_setaffinity, CPU_SET};
+use smallvec::{smallvec, SmallVec};
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::mem::{size_of, zeroed, MaybeUninit};
@@ -75,7 +76,8 @@ enum TSCLevel {
     },
     PerCPUStable {
         cycles_per_second: u64,
-        cycles_from_anchor: Vec<u64>,
+        // 2U EPYC
+        cycles_from_anchor: SmallVec<[u64; 512]>,
     },
     Unstable,
 }
@@ -131,7 +133,7 @@ impl TSCLevel {
             };
 
             // Indexed by CPU ID
-            let mut cycles_from_anchor = vec![0; max_cpu_id + 1];
+            let mut cycles_from_anchor = smallvec![0; max_cpu_id + 1];
 
             // Rates of TSCs on different CPUs won't be a big gap
             // or it's unstable.
@@ -325,6 +327,7 @@ fn set_affinity(cpuid: usize) -> Result<(), Error> {
     }
 }
 
+/// TODO: this is slow
 /// List format
 /// The  List  Format for cpus and mems is a comma-separated list of CPU or
 /// memory-node numbers and ranges of numbers, in ASCII decimal.

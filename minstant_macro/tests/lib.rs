@@ -3,18 +3,18 @@
 use minstant_macro::timing;
 
 #[timing(|elapsed_cycles| *statistic += elapsed_cycles)]
-fn heavy_load(statistic: &mut u64) {
+fn heavy_load(statistic: &mut minstant::duration::Duration) {
     std::thread::sleep(std::time::Duration::from_secs(1));
 }
 
 #[test]
 fn test_macro() {
     let start = std::time::Instant::now();
-    let mut statistic = 0;
+    let mut statistic = minstant::duration::Duration::default();
     heavy_load(&mut statistic);
     let std_nanos = start.elapsed().as_nanos() as i64;
-    let minstant_nanos = (statistic as f64 * minstant::nanos_per_cycle()) as i64;
-
+    let minstant_nanos = statistic.as_nanos() as i64;
+    println!("minstant: {:?}, std: {:?}",minstant_nanos, std_nanos);
     #[cfg(target_os = "windows")]
     let expect_max_delta_ns = 20_000_000;
     #[cfg(not(target_os = "windows"))]

@@ -38,9 +38,10 @@ pub fn timing(args: TokenStream, item: TokenStream) -> TokenStream {
         #vis #constness #unsafety #asyncness #abi fn #ident<#gen_params>(#params) #return_type
         #where_clause
         {
-            let __start = minstant::now();
+            let __start = minstant::instant::Instant::now();
             let __res = (|| { #block })();
-            let __elapsed_cycles = minstant::now() - __start;
+            let __end = minstant::instant::Instant::now();
+            let __elapsed_cycles =  __end - __start;
             let _: () = (#handle_result)(__elapsed_cycles);
             __res
         }

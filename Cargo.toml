@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 ctor = "0.1.20"
 minstant_macro = { path = "minstant_macro" }
+smallvec = { version = "1.6", features = ["union","const_generics"] }
 
 [workspace]
 members = [ "minstant_macro" ]
