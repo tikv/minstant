@@ -332,7 +332,7 @@ fn set_affinity(cpuid: usize) -> Result<(), Error> {
 /// Examples of the List Format:
 ///   0-4,9           # bits 0, 1, 2, 3, 4, and 9 set
 ///   0-2,7,12-14     # bits 0, 1, 2, 7, 12, 13, and 14 set
-fn parse_cpu_list_format(list: &str) -> Result<Vec<usize>, Error> {
+pub(crate) fn parse_cpu_list_format(list: &str) -> Result<Vec<usize>, Error> {
     let mut res = vec![];
     let list = list.trim();
     for set in list.split(',') {
@@ -349,25 +349,4 @@ fn parse_cpu_list_format(list: &str) -> Result<Vec<usize>, Error> {
     }
 
     Ok(res)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_list_format() {
-        assert_eq!(
-            parse_cpu_list_format("0-2,7,12-14\n").unwrap(),
-            &[0, 1, 2, 7, 12, 13, 14]
-        );
-        assert_eq!(
-            parse_cpu_list_format("0-4,9\n").unwrap(),
-            &[0, 1, 2, 3, 4, 9]
-        );
-        assert_eq!(
-            parse_cpu_list_format("0-15\n").unwrap(),
-            (0..=15).collect::<Vec<_>>()
-        );
-    }
 }
