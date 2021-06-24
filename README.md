@@ -5,6 +5,10 @@
 
 A Rust library to measure time with high performance.
 
+## Performance
+left `minstant` , right `std::time`
+
+![our](https://pbs.twimg.com/media/E4nkOszVkAUkazO?format=png) ![std](https://pbs.twimg.com/media/E4nkfHQVgAEYHtl?format=png)
 
 ## Usage
 
@@ -13,14 +17,12 @@ A Rust library to measure time with high performance.
 minstant = { git = "https://github.com/tikv/minstant.git", branch = "master" }
 ```
 
+similar to `std::time::Instance`
+
 ```rust
-let start = minstant::now();
-
-// Code snipppet to measure
-
-let end = minstant::now();
-
-let elapsed_nanos = (end - start) as f64 * minstant::nanos_per_cycle();
+let start = Instance::now();
+// do blablabla
+let dur = start.elapsed();
 ```
 
 
