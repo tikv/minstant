@@ -14,7 +14,7 @@ fn test_macro() {
     heavy_load(&mut statistic);
     let std_nanos = start.elapsed().as_nanos() as i64;
     let minstant_nanos = statistic.as_nanos() as i64;
-    println!("minstant: {:?}, std: {:?}",minstant_nanos, std_nanos);
+    println!("minstant: {:?}, std: {:?}", minstant_nanos, std_nanos);
     #[cfg(target_os = "windows")]
     let expect_max_delta_ns = 20_000_000;
     #[cfg(not(target_os = "windows"))]

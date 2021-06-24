@@ -24,7 +24,7 @@ fn test_monotonic() {
         prev = cur;
     }
 }
-
+#[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
 #[test]
 fn test_nanos_per_cycle() {
     let _ = nanos_per_cycle();
@@ -66,15 +66,15 @@ fn test_duration() {
 #[test]
 fn test_parse_list_format() {
     assert_eq!(
-        parse_cpu_list_format("0-2,7,12-14\n").unwrap(),
+        parse_cpu_list_format("0-2,7,12-14\n").unwrap().into_vec(),
         &[0, 1, 2, 7, 12, 13, 14]
     );
     assert_eq!(
-        parse_cpu_list_format("0-4,9\n").unwrap(),
+        parse_cpu_list_format("0-4,9\n").unwrap().into_vec(),
         &[0, 1, 2, 3, 4, 9]
     );
     assert_eq!(
-        parse_cpu_list_format("0-15\n").unwrap(),
+        parse_cpu_list_format("0-15\n").unwrap().into_vec(),
         (0..=15).collect::<Vec<_>>()
     );
 }

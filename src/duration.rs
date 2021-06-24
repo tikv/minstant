@@ -7,7 +7,6 @@ use std::ops::*;
 #[derive(Copy, Clone, Debug, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub enum Duration {
     Timespec(u64),
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
     Cycle(u64),
 }
 
@@ -16,6 +15,12 @@ use Duration::*;
 
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
 use crate::tsc_now::nanos_per_cycle;
+
+/// dummy for non-linux-x86 platform
+#[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+fn nanos_per_cycle() -> f64 {
+    1.0
+}
 
 impl Default for Duration {
     fn default() -> Self {
@@ -97,6 +102,18 @@ impl Duration {
         match self {
             Timespec(t) => ((*t as u32 as u64 * 0x7735940) >> 29) as u32 + 1,
             Cycle(c) => ((*c as f64 * nanos_per_cycle()) as u128 % 1_000_000_000) as u32,
+        }
+    }
+    #[inline]
+    pub(crate) fn timespec_from_u64(from: u64) -> Self {
+        Timespec(from)
+    }
+
+    #[inline]
+    pub(crate) fn timespec_as_u64(&self) -> u64 {
+        match self {
+            Timespec(u) => *u,
+            Cycle(_) => panic!("???"),
         }
     }
 }

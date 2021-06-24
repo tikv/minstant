@@ -2,19 +2,19 @@
 
 //! This module will be compiled when it's either linux_x86 or linux_x86_64.
 
+use crate::instant::Instant;
 use libc::{cpu_set_t, sched_setaffinity, CPU_SET};
 use smallvec::{smallvec, SmallVec};
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::mem::{size_of, zeroed, MaybeUninit};
-use std::time::Instant;
 use std::{cell::UnsafeCell, fs::read_to_string};
 
 type Error = Box<dyn std::error::Error>;
 
 static TSC_STATE: TSCState = TSCState {
     tsc_available: UnsafeCell::new(false),
-    tsc_level: UnsafeCell::new(TSCLevel::Unstable),
+    tsc_level: UnsafeCell::new(TSCLevel::Unstable { anchor: 0 }),
     nanos_per_cycle: UnsafeCell::new(1.0),
 };
 
@@ -32,7 +32,7 @@ unsafe fn init() {
     let tsc_available = match &tsc_level {
         TSCLevel::Stable { .. } => true,
         TSCLevel::PerCPUStable { .. } => true,
-        TSCLevel::Unstable => false,
+        TSCLevel::Unstable { .. } => false,
     };
     if tsc_available {
         *TSC_STATE.nanos_per_cycle.get() = 1_000_000_000.0 / tsc_level.cycles_per_second() as f64;
@@ -52,42 +52,52 @@ pub(crate) fn nanos_per_cycle() -> f64 {
     unsafe { *TSC_STATE.nanos_per_cycle.get() }
 }
 
+// return (cycles from anchor, anchor)
+// cycles from anchor could not be zero i guess
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn now() -> (u64, u64) {
     match unsafe { &*TSC_STATE.tsc_level.get() } {
         TSCLevel::Stable {
-            cycles_from_anchor, ..
-        } => tsc().wrapping_sub(*cycles_from_anchor),
+            anchor,
+            cycles_from_anchor,
+            ..
+        } => (tsc().wrapping_sub(*cycles_from_anchor), *anchor),
         TSCLevel::PerCPUStable {
-            cycles_from_anchor, ..
+            anchor,
+            cycles_from_anchor,
+            ..
         } => {
             let (tsc, cpuid) = tsc_with_cpuid();
-            let anchor = cycles_from_anchor[cpuid];
-            tsc.wrapping_sub(anchor)
+            (tsc.wrapping_sub(cycles_from_anchor[cpuid]), *anchor)
         }
-        TSCLevel::Unstable => panic!("tsc is unstable"),
+        TSCLevel::Unstable { anchor } => (0, *anchor),
     }
 }
 
 enum TSCLevel {
     Stable {
+        anchor: u64,
         cycles_per_second: u64,
         cycles_from_anchor: u64,
     },
     PerCPUStable {
+        anchor: u64,
         cycles_per_second: u64,
         // 2U EPYC
         cycles_from_anchor: SmallVec<[u64; 512]>,
     },
-    Unstable,
+    Unstable {
+        anchor: u64,
+    },
 }
 
 impl TSCLevel {
     fn get() -> TSCLevel {
-        let anchor = Instant::now();
+        let anchor = Instant::coarse_now();
         if is_tsc_stable() {
-            let (cps, cfa) = cycles_per_sec(anchor);
+            let (cps, cfa) = cycles_per_sec(&anchor);
             return TSCLevel::Stable {
+                anchor: anchor.coarse_as_u64(),
                 cycles_per_second: cps,
                 cycles_from_anchor: cfa,
             };
@@ -97,12 +107,15 @@ impl TSCLevel {
             // Retrieve the IDs of all active CPUs.
             let cpuids = if let Ok(cpuids) = available_cpus() {
                 if cpuids.is_empty() {
-                    return TSCLevel::Unstable;
+                    return TSCLevel::Unstable {
+                        anchor: anchor.coarse_as_u64(),
+                    };
                 }
-
                 cpuids
             } else {
-                return TSCLevel::Unstable;
+                return TSCLevel::Unstable {
+                    anchor: anchor.coarse_as_u64(),
+                };
             };
 
             let max_cpu_id = *cpuids.iter().max().unwrap();
@@ -117,7 +130,7 @@ impl TSCLevel {
                     let (_, cpuid) = tsc_with_cpuid();
                     assert_eq!(cpuid, id);
 
-                    let (cps, cfa) = cycles_per_sec(anchor);
+                    let (cps, cfa) = cycles_per_sec(&anchor);
 
                     (id, cps, cfa)
                 })
@@ -129,7 +142,9 @@ impl TSCLevel {
             let results = if let Ok(results) = results {
                 results
             } else {
-                return TSCLevel::Unstable;
+                return TSCLevel::Unstable {
+                    anchor: anchor.coarse_as_u64(),
+                };
             };
 
             // Indexed by CPU ID
@@ -152,16 +167,21 @@ impl TSCLevel {
                 cycles_from_anchor[cpuid] = cfa;
             }
             if (max_cps - min_cps) as f64 / min_cps as f64 > 0.0005 {
-                return TSCLevel::Unstable;
+                return TSCLevel::Unstable {
+                    anchor: anchor.coarse_as_u64(),
+                };
             }
 
             return TSCLevel::PerCPUStable {
                 cycles_per_second: sum_cps / len as u64,
                 cycles_from_anchor,
+                anchor: anchor.coarse_as_u64(),
             };
         }
 
-        TSCLevel::Unstable
+        return TSCLevel::Unstable {
+            anchor: anchor.coarse_as_u64(),
+        };
     }
 
     #[inline]
@@ -173,7 +193,7 @@ impl TSCLevel {
             TSCLevel::PerCPUStable {
                 cycles_per_second, ..
             } => *cycles_per_second,
-            TSCLevel::Unstable => panic!("tsc is unstable"),
+            TSCLevel::Unstable { .. } => 0,
         }
     }
 }
@@ -223,9 +243,9 @@ fn is_tsc_percpu_stable() -> bool {
 /// can be used to
 ///   1. readjust TSC to begin from zero
 ///   2. sync TSCs between all CPUs
-fn cycles_per_sec(anchor: Instant) -> (u64, u64) {
+fn cycles_per_sec(anchor: &Instant) -> (u64, u64) {
     let (cps, last_monotonic, last_tsc) = _cycles_per_sec();
-    let nanos_from_anchor = (last_monotonic - anchor).as_nanos();
+    let nanos_from_anchor = (last_monotonic - *anchor).as_nanos();
     let cycles_flied = cps as f64 * nanos_from_anchor as f64 / 1_000_000_000.0;
     let cycles_from_anchor = last_tsc - cycles_flied.ceil() as u64;
 
@@ -265,7 +285,7 @@ fn _cycles_per_sec() -> (u64, Instant, u64) {
 /// get interrupted in half way may happen, they aren't guaranteed
 /// to represent the same instant.
 fn monotonic_with_tsc() -> (Instant, u64) {
-    (Instant::now(), tsc())
+    (Instant::coarse_now(), tsc())
 }
 
 #[inline]
@@ -301,7 +321,7 @@ fn tsc_with_cpuid() -> (u64, usize) {
 }
 
 // Retrieve available CPUs from `/sys` filesystem.
-fn available_cpus() -> Result<Vec<usize>, Error> {
+fn available_cpus() -> Result<SmallVec<[usize; 512]>, Error> {
     let s = read_to_string("/sys/devices/system/cpu/online")?;
     parse_cpu_list_format(&s)
 }
@@ -335,8 +355,8 @@ fn set_affinity(cpuid: usize) -> Result<(), Error> {
 /// Examples of the List Format:
 ///   0-4,9           # bits 0, 1, 2, 3, 4, and 9 set
 ///   0-2,7,12-14     # bits 0, 1, 2, 7, 12, 13, and 14 set
-pub(crate) fn parse_cpu_list_format(list: &str) -> Result<Vec<usize>, Error> {
-    let mut res = vec![];
+pub(crate) fn parse_cpu_list_format(list: &str) -> Result<SmallVec<[usize; 512]>, Error> {
+    let mut res: SmallVec<[usize; 512]> = SmallVec::new();
     let list = list.trim();
     for set in list.split(',') {
         if set.contains('-') {
@@ -344,7 +364,7 @@ pub(crate) fn parse_cpu_list_format(list: &str) -> Result<Vec<usize>, Error> {
             let from = ft.next().ok_or("expected from")?.parse::<usize>()?;
             let to = ft.next().ok_or("expected to")?.parse::<usize>()?;
             for i in from..=to {
-                res.push(i);
+                res.push(i as usize);
             }
         } else {
             res.push(set.parse()?)

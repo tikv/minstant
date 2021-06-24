@@ -5,20 +5,13 @@ use crate::{duration::*, utils::*};
 #[allow(unused_imports)]
 use std::ptr::*;
 
-#[cfg(all(
-    any(target_arch = "wasm32", target_arch = "wasm64"),
-    target_os = "unknown"
-))]
-use wasm_bindgen::prelude::*;
-
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub enum Instant {
     Coarse(u64),
-    // TODO: add anchor
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    Cycle(u64),
+    Cycle { cycle: u64, anchor_coarse: u64 },
 }
 use Instant::*;
+
 // ===== WINDOWS ===== //
 
 #[cfg(windows)]
@@ -46,6 +39,12 @@ extern "system" {
 const CLOCK_MONOTONIC_FAST: clockid_t = 12;
 
 // ===== WASM ===== //
+
+#[cfg(all(
+    any(target_arch = "wasm32", target_arch = "wasm64"),
+    target_os = "unknown"
+))]
+use wasm_bindgen::prelude::*;
 
 #[cfg(all(
     any(target_arch = "wasm32", target_arch = "wasm64"),
@@ -80,12 +79,12 @@ impl Instant {
         Coarse(timespec_to_u64(tp.tv_sec as u64, tp.tv_nsec as u32))
     }
 
-    /// linux x86 strictly use tsc
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
     #[inline]
-    pub fn tsc_now() -> Self {
-        use crate::tsc_now;
-        Cycle(tsc_now::now())
+    pub(crate) fn coarse_as_u64(&self) -> u64 {
+        match self {
+            Coarse(c) => *c,
+            Cycle { anchor_coarse, .. } => *anchor_coarse,
+        }
     }
 
     /// TSC is used if is available in x86 arch
@@ -93,10 +92,14 @@ impl Instant {
     #[inline]
     pub fn now() -> Self {
         use crate::tsc_now;
-        if tsc_now::tsc_available() {
-            Self::tsc_now()
+        let (cycle, anchor_coarse) = tsc_now::now();
+        if cycle != 0 {
+            Cycle {
+                cycle,
+                anchor_coarse,
+            }
         } else {
-            Self::coarse_now()
+            Coarse(anchor_coarse)
         }
     }
 
@@ -108,7 +111,13 @@ impl Instant {
     ))]
     #[inline]
     pub fn now() -> Self {
-        Self::coarse_now()
+        use std::mem::MaybeUninit;
+        let mut tp = MaybeUninit::<libc::timespec>::uninit();
+        let tp = unsafe {
+            libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr());
+            tp.assume_init()
+        };
+        Coarse(timespec_to_u64(tp.tv_sec as u64, tp.tv_nsec as u32))
     }
 
     #[cfg(target_os = "macos")]
@@ -161,21 +170,21 @@ impl Instant {
         match earlier {
             Coarse(co0) => match self {
                 Coarse(co1) => Duration::Timespec(co1 - co0),
-                Cycle(_) => panic!("could not compare coarse with cycle"),
+                Cycle { anchor_coarse, .. } => Duration::Timespec(anchor_coarse - co0),
             },
-            Cycle(cy0) => match self {
-                Coarse(_) => panic!("could not compare coarse with cycle"),
-                Cycle(cy1) => Duration::Cycle(cy1 - cy0),
+            Cycle {
+                cycle: cycle0,
+                anchor_coarse,
+            } => match self {
+                Coarse(old) => Duration::Timespec(*old - anchor_coarse),
+                Cycle { cycle: cycle1, .. } => Duration::Cycle(cycle1 - cycle0),
             },
         }
     }
 
     #[inline]
     pub fn elapsed(&self) -> Duration {
-        match self {
-            Coarse(_) => self.duration_since(Self::coarse_now()),
-            Cycle(_) => self.duration_since(Self::tsc_now()),
-        }
+        Self::now().duration_since(*self)
     }
 }
 
@@ -204,11 +213,17 @@ impl Sub<Duration> for Instant {
         match self {
             Coarse(co0) => match rhs {
                 Duration::Timespec(t0) => Coarse(co0 - t0),
-                Duration::Cycle(_) => panic!("could not compare coarse with cycle"),
+                _ => Coarse((Duration::timespec_from_u64(co0) - rhs).timespec_as_u64()),
             },
-            Cycle(cy0) => match rhs {
-                Duration::Timespec(_) => panic!("could not compare coarse with cycle"),
-                Duration::Cycle(cy1) => Cycle(cy0 - cy1),
+            Cycle {
+                cycle,
+                anchor_coarse,
+            } => match rhs {
+                Duration::Timespec(t0) => Coarse(t0 - anchor_coarse),
+                Duration::Cycle(cy1) => Cycle {
+                    anchor_coarse,
+                    cycle: cycle - cy1,
+                },
             },
         }
     }
@@ -229,11 +244,19 @@ impl Add<Duration> for Instant {
         match self {
             Coarse(co0) => match rhs {
                 Duration::Timespec(t0) => Coarse(co0 + t0),
-                Duration::Cycle(_) => panic!("could not compare coarse with cycle"),
+                Duration::Cycle(_) => {
+                    Coarse((Duration::timespec_from_u64(co0) + rhs).timespec_as_u64())
+                }
             },
-            Cycle(cy0) => match rhs {
-                Duration::Timespec(_) => panic!("could not compare coarse with cycle"),
-                Duration::Cycle(cy1) => Cycle(cy0 + cy1),
+            Cycle {
+                cycle,
+                anchor_coarse,
+            } => match rhs {
+                Duration::Timespec(t0) => Coarse(t0 + anchor_coarse),
+                Duration::Cycle(cy1) => Cycle {
+                    anchor_coarse,
+                    cycle: cycle + cy1,
+                },
             },
         }
     }
