@@ -11,7 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[inline]
 pub fn now() -> u64 {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if tsc_available() {
+    if is_tsc_available() {
         tsc_now::now()
     } else {
         coarse_now::now()
@@ -23,10 +23,10 @@ pub fn now() -> u64 {
 }
 
 #[inline]
-pub fn tsc_available() -> bool {
+pub fn is_tsc_available() -> bool {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
     {
-        tsc_now::tsc_available()
+        tsc_now::is_tsc_available()
     }
     #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
     {
@@ -91,8 +91,8 @@ mod tests {
     use std::time::{Duration, Instant};
 
     #[test]
-    fn test_tsc_available() {
-        let _ = tsc_available();
+    fn test_is_tsc_available() {
+        let _ = is_tsc_available();
     }
 
     #[test]

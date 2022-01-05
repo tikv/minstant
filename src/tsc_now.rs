@@ -12,13 +12,13 @@ use std::{cell::UnsafeCell, fs::read_to_string};
 type Error = Box<dyn std::error::Error>;
 
 static TSC_STATE: TSCState = TSCState {
-    tsc_available: UnsafeCell::new(false),
+    is_tsc_available: UnsafeCell::new(false),
     tsc_level: UnsafeCell::new(TSCLevel::Unstable),
     nanos_per_cycle: UnsafeCell::new(1.0),
 };
 
 struct TSCState {
-    tsc_available: UnsafeCell<bool>,
+    is_tsc_available: UnsafeCell<bool>,
     tsc_level: UnsafeCell<TSCLevel>,
     nanos_per_cycle: UnsafeCell<f64>,
 }
@@ -28,22 +28,22 @@ unsafe impl Sync for TSCState {}
 #[ctor::ctor]
 unsafe fn init() {
     let tsc_level = TSCLevel::get();
-    let tsc_available = match &tsc_level {
+    let is_tsc_available = match &tsc_level {
         TSCLevel::Stable { .. } => true,
         TSCLevel::PerCPUStable { .. } => true,
         TSCLevel::Unstable => false,
     };
-    if tsc_available {
+    if is_tsc_available {
         *TSC_STATE.nanos_per_cycle.get() = 1_000_000_000.0 / tsc_level.cycles_per_second() as f64;
     }
-    *TSC_STATE.tsc_available.get() = tsc_available;
+    *TSC_STATE.is_tsc_available.get() = is_tsc_available;
     *TSC_STATE.tsc_level.get() = tsc_level;
     std::sync::atomic::fence(std::sync::atomic::Ordering::SeqCst);
 }
 
 #[inline]
-pub(crate) fn tsc_available() -> bool {
-    unsafe { *TSC_STATE.tsc_available.get() }
+pub(crate) fn is_tsc_available() -> bool {
+    unsafe { *TSC_STATE.is_tsc_available.get() }
 }
 
 #[inline]
