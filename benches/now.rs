@@ -7,7 +7,7 @@ fn bench_minstant_now(c: &mut Criterion) {
 }
 
 fn bench_quanta_now(c: &mut Criterion) {
-    c.bench_function("minstant::Instant::now()", |b| {
+    c.bench_function("quanta::Instant::now()", |b| {
         b.iter(quanta::Instant::now);
     });
 }
