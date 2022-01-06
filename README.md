@@ -45,4 +45,4 @@ minstant::Anchor::new()             time:   [46.987 ns 47.243 ns 47.498 ns]
 minstant::Instant::as_unix_nanos()  time:   [15.287 ns 15.318 ns 15.350 ns]
 ```
 
-![](benchmark.jpeg)
+![Benchmark](benchmark.jpeg)
