@@ -1,4 +1,4 @@
-# Minstant
+# minstant
 [![Actions Status](https://github.com/tikv/minstant/workflows/CI/badge.svg)](https://github.com/tikv/minstant/actions)
 [![Build Status](https://travis-ci.org/tikv/minstant.svg?branch=master)](https://travis-ci.org/tikv/minstant)
 [![Documentation](https://docs.rs/minstant/badge.svg)](https://docs.rs/minstant/)
