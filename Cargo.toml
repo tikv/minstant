@@ -23,7 +23,7 @@ wasi = "0.7"
 [dev-dependencies]
 criterion = "0.3"
 quanta = "0.9"
-rand = "*"
+rand = "0.8"
 
 [[bench]]
 name = "criterion"
