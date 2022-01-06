@@ -26,5 +26,5 @@ quanta = "0.9"
 rand = "*"
 
 [[bench]]
-name = "now"
+name = "criterion"
 harness = false

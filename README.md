@@ -34,44 +34,13 @@ Currently, only the Linux on `x86` or `x86_64` is backed by [TSC](https://en.wik
 Benchmark platform is `Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz` on CentOS 7.
 
 ```sh
-> cargo bench
+> cargo criterion
 
-minstant::Instant::now()
-                        time:   [10.436 ns 10.536 ns 10.681 ns]
-                        change: [-0.3585% +0.2484% +0.9376%] (p = 0.46 > 0.05)
-                        No change in performance detected.
-Found 5 outliers among 100 measurements (5.00%)
-  1 (1.00%) low mild
-  3 (3.00%) high mild
-  1 (1.00%) high severe
-
-quanta::Instant::now()  time:   [31.862 ns 31.944 ns 32.031 ns]
-                        change: [-0.5409% -0.0894% +0.3226%] (p = 0.70 > 0.05)
-                        No change in performance detected.
-Found 3 outliers among 100 measurements (3.00%)
-  3 (3.00%) high mild
-
-std::Instant::now()     time:   [26.273 ns 26.439 ns 26.652 ns]
-                        change: [-1.4857% -0.1542% +1.3351%] (p = 0.84 > 0.05)
-                        No change in performance detected.
-Found 15 outliers among 100 measurements (15.00%)
-  1 (1.00%) low severe
-  8 (8.00%) low mild
-  6 (6.00%) high severe
-
-minstant::Anchor::new() time:   [46.674 ns 46.878 ns 47.143 ns]
-                        change: [-0.6831% -0.3151% +0.1095%] (p = 0.13 > 0.05)
-                        No change in performance detected.
-Found 4 outliers among 100 measurements (4.00%)
-  3 (3.00%) high mild
-  1 (1.00%) high severe
-
-minstant::Instant::as_unix_nanos()
-                        time:   [15.377 ns 15.426 ns 15.476 ns]
-                        change: [-0.3004% +0.1117% +0.5448%] (p = 0.61 > 0.05)
-                        No change in performance detected.
-Found 8 outliers among 100 measurements (8.00%)
-  2 (2.00%) low mild
-  4 (4.00%) high mild
-  2 (2.00%) high severe
+Instant::now()/minstant             time:   [10.449 ns 10.514 ns 10.619 ns]
+Instant::now()/quanta               time:   [31.467 ns 31.628 ns 31.822 ns]
+Instant::now()/std                  time:   [26.831 ns 26.924 ns 27.016 ns]
+minstant::Anchor::new()             time:   [46.987 ns 47.243 ns 47.498 ns]
+minstant::Instant::as_unix_nanos()  time:   [15.287 ns 15.318 ns 15.350 ns]
 ```
+
+![](benchmark.jpeg)

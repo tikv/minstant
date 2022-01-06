@@ -1,23 +1,20 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
-fn bench_minstant_now(c: &mut Criterion) {
-    c.bench_function("minstant::Instant::now()", |b| {
-        b.iter(minstant::Instant::now);
-    });
-}
-
-fn bench_quanta_now(c: &mut Criterion) {
+fn bench_nows(c: &mut Criterion) {
     // The first call will take some time for calibartion
     quanta::Instant::now();
-    c.bench_function("quanta::Instant::now()", |b| {
+
+    let mut group = c.benchmark_group("Instant::now()");
+    group.bench_function("minstant", |b| {
+        b.iter(minstant::Instant::now);
+    });
+    group.bench_function("quanta", |b| {
         b.iter(quanta::Instant::now);
     });
-}
-
-fn bench_std_now(c: &mut Criterion) {
-    c.bench_function("std::Instant::now()", |b| {
+    group.bench_function("std", |b| {
         b.iter(std::time::Instant::now);
     });
+    group.finish();
 }
 
 fn bench_anchor_new(c: &mut Criterion) {
@@ -26,7 +23,7 @@ fn bench_anchor_new(c: &mut Criterion) {
     });
 }
 
-fn bench_unix_time(c: &mut Criterion) {
+fn bench_as_unix_nanos(c: &mut Criterion) {
     let anchor = minstant::Anchor::new();
     c.bench_function("minstant::Instant::as_unix_nanos()", |b| {
         b.iter(|| {
@@ -35,12 +32,5 @@ fn bench_unix_time(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    bench_minstant_now,
-    bench_quanta_now,
-    bench_std_now,
-    bench_anchor_new,
-    bench_unix_time
-);
+criterion_group!(benches, bench_nows, bench_anchor_new, bench_as_unix_nanos);
 criterion_main!(benches);
