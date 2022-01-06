@@ -27,7 +27,7 @@ const CLOCK_MONOTONIC_FAST: clockid_t = 12;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     let mut tp = MaybeUninit::<libc::timespec>::uninit();
     let tp = unsafe {
         libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr());
@@ -38,13 +38,13 @@ pub(crate) fn now() -> u64 {
 
 #[cfg(target_os = "macos")]
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     unsafe { clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW_APPROX) }
 }
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     let mut tp = MaybeUninit::<libc::timespec>::uninit();
     let tp = unsafe {
         libc::clock_gettime(libc::CLOCK_MONOTONIC_FAST, tp.as_mut_ptr());
@@ -64,7 +64,7 @@ pub(crate) fn now() -> u64 {
     ))
 ))]
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     let mut tv = MaybeUninit::<libc::timeval>::uninit();
     let tv = unsafe {
         libc::gettimeofday(tv.as_mut_ptr(), null_mut());
@@ -75,14 +75,14 @@ pub(crate) fn now() -> u64 {
 
 #[cfg(windows)]
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     let millis = unsafe { GetTickCount() } as u64;
     millis * 1_000_000
 }
 
 #[cfg(target_os = "wasi")]
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     use wasi::wasi_unstable::{clock_time_get, CLOCK_MONOTONIC};
     clock_time_get(CLOCK_MONOTONIC, 1_000_000).unwrap_or(0)
 }
@@ -93,9 +93,9 @@ mod tests {
 
     #[test]
     fn test_now() {
-        let mut prev = now();
+        let mut prev = current_cycle();
         for _ in 0..100 {
-            let n = now();
+            let n = current_cycle();
             assert!(n >= prev);
             prev = n;
         }

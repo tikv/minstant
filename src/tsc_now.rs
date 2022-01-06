@@ -52,7 +52,7 @@ pub(crate) fn nanos_per_cycle() -> f64 {
 }
 
 #[inline]
-pub(crate) fn now() -> u64 {
+pub(crate) fn current_cycle() -> u64 {
     match unsafe { &*TSC_STATE.tsc_level.get() } {
         TSCLevel::Stable {
             cycles_from_anchor, ..
