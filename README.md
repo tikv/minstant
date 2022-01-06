@@ -1,6 +1,8 @@
-# Minstant
+# minstant
 [![Actions Status](https://github.com/tikv/minstant/workflows/CI/badge.svg)](https://github.com/tikv/minstant/actions)
 [![Build Status](https://travis-ci.org/tikv/minstant.svg?branch=master)](https://travis-ci.org/tikv/minstant)
+[![Documentation](https://docs.rs/minstant/badge.svg)](https://docs.rs/minstant/)
+[![Crates.io](https://img.shields.io/crates/v/minstant.svg)](https://crates.io/crates/minstant)
 [![LICENSE](https://img.shields.io/github/license/tikv/minstant.svg)](https://github.com/tikv/minstant/blob/master/LICENSE)
 
 A drop-in replacement for [`std::time::Instant`](https://doc.rust-lang.org/std/time/struct.Instant.html) that measures time with high performance and high accuracy powered by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter).
@@ -9,7 +11,7 @@ A drop-in replacement for [`std::time::Instant`](https://doc.rust-lang.org/std/t
 
 ```toml
 [dependencies]
-minstant = { git = "https://github.com/tikv/minstant.git", branch = "master" }
+minstant = "0.1"
 ```
 
 ```rust

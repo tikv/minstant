@@ -8,7 +8,7 @@ use std::{
 /// A measurement of a monotonically nondecreasing clock. Similar to
 /// [`std::time::Instant`](std::time::Instant) but is faster and more
 /// accurate if TSC is available.
-#[derive(Clone, Copy)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Instant(u64);
 
 impl Instant {

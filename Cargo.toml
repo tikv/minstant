@@ -1,6 +1,6 @@
 [package]
 name = "minstant"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["The TiKV Authors"]
 edition = "2018"
 license = "MIT"
@@ -23,7 +23,7 @@ wasi = "0.7"
 [dev-dependencies]
 criterion = "0.3"
 quanta = "0.9"
-rand = "*"
+rand = "0.8"
 
 [[bench]]
 name = "criterion"
