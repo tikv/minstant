@@ -37,17 +37,41 @@ Benchmark platform is `Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz` on CentOS 7.
 > cargo bench
 
 minstant::Instant::now()
-            time:   [10.463 ns 10.496 ns 10.533 ns]
-            change: [-2.1521% -1.0827% -0.2262%] (p = 0.02 < 0.05)
-            Change within noise threshold.
+                        time:   [10.436 ns 10.536 ns 10.681 ns]
+                        change: [-0.3585% +0.2484% +0.9376%] (p = 0.46 > 0.05)
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  1 (1.00%) low mild
+  3 (3.00%) high mild
+  1 (1.00%) high severe
 
-std::Instant::now()
-            time:   [26.720 ns 26.855 ns 27.026 ns]
-            change: [-0.1996% +0.2410% +0.7321%] (p = 0.32 > 0.05)
-            No change in performance detected.
+quanta::Instant::now()  time:   [31.862 ns 31.944 ns 32.031 ns]
+                        change: [-0.5409% -0.0894% +0.3226%] (p = 0.70 > 0.05)
+                        No change in performance detected.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+
+std::Instant::now()     time:   [26.273 ns 26.439 ns 26.652 ns]
+                        change: [-1.4857% -0.1542% +1.3351%] (p = 0.84 > 0.05)
+                        No change in performance detected.
+Found 15 outliers among 100 measurements (15.00%)
+  1 (1.00%) low severe
+  8 (8.00%) low mild
+  6 (6.00%) high severe
+
+minstant::Anchor::new() time:   [46.674 ns 46.878 ns 47.143 ns]
+                        change: [-0.6831% -0.3151% +0.1095%] (p = 0.13 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
 
 minstant::Instant::as_unix_nanos()
-            time:   [15.364 ns 15.456 ns 15.574 ns]
-            change: [+0.1835% +0.6363% +1.1179%] (p = 0.01 < 0.05)
-            Change within noise threshold.
+                        time:   [15.377 ns 15.426 ns 15.476 ns]
+                        change: [-0.3004% +0.1117% +0.5448%] (p = 0.61 > 0.05)
+                        No change in performance detected.
+Found 8 outliers among 100 measurements (8.00%)
+  2 (2.00%) low mild
+  4 (4.00%) high mild
+  2 (2.00%) high severe
 ```

@@ -7,6 +7,8 @@ fn bench_minstant_now(c: &mut Criterion) {
 }
 
 fn bench_quanta_now(c: &mut Criterion) {
+    // The first call will take some time for calibartion
+    quanta::Instant::now();
     c.bench_function("quanta::Instant::now()", |b| {
         b.iter(quanta::Instant::now);
     });
