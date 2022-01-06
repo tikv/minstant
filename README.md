@@ -17,13 +17,17 @@ let start = minstant::Instant::now();
 
 // Code snipppet to measure
 
-let end: std::time::Duration = start.elapsed();
+let duration: std::time::Duration = start.elapsed();
 ```
 
 
 ## Motivation
 
-This library is used by an high performance tracing library [`minitrace-rust`](https://github.com/tikv/minitrace-rust). The main purpose is to use [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter) on x86 processors to measure time at high speed without losing much accuracy. If TSC is inaccessible (on non-x86 systems) or unreliable, it will fallback to coarse time. Currently TSC timing only supports Linux on x86 or x86_64.
+This library is used by an high performance tracing library [`minitrace-rust`](https://github.com/tikv/minitrace-rust). The main purpose is to use [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter) on x86 processors to measure time at high speed without losing much accuracy.
+
+## Platform Support
+
+Currently, only the Linux on `x86` or `x86_64` is backed by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter). On other platforms, `minstant` falls back to coarse time. If TSC is unstable, it will also fall back to coarse time.
 
 ## Benchmark
 

@@ -3,6 +3,13 @@ name = "minstant"
 version = "0.1.0"
 authors = ["The TiKV Authors"]
 edition = "2018"
+license = "MIT"
+description = "A drop-in replacement for `std::time::Instant` that measures time with high performance and high accuracy powered by TSC"
+homepage = "https://github.com/tikv/minstant"
+repository = "https://github.com/tikv/minstant"
+documentation = "https://docs.rs/minstant"
+readme = "README.md"
+keywords = ["TSC", "clock", "rdtsc", "timing", "nanosecond"]
 
 [dependencies]
 ctor = "0.1.20"

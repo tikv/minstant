@@ -10,7 +10,7 @@
 //!
 //! // Code snipppet to measure
 //!
-//! let end: std::time::Duration = start.elapsed();
+//! let duration: std::time::Duration = start.elapsed();
 //! ```
 //!
 //! ## Platform Support
