@@ -27,5 +27,11 @@ fn bench_unix_time(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, bench_now, bench_std_now, bench_anchor_new, bench_unix_time);
+criterion_group!(
+    benches,
+    bench_now,
+    bench_std_now,
+    bench_anchor_new,
+    bench_unix_time
+);
 criterion_main!(benches);

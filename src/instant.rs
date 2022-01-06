@@ -141,9 +141,9 @@ impl Instant {
     /// Convert interal clocking counter into a UNIX timestamp represented as the
     /// nanosecond elapsed from [UNIX_EPOCH](std::time::UNIX_EPOCH).
     ///
-    /// [`Anchor`](crate::Anchor) contains the necessary callibraion data for conversion.
+    /// [`Anchor`](crate::Anchor) contains the necessary calibration data for conversion.
     /// Typically, initializing an [`Anchor`](crate::Anchor) takes about 50 nano seconds, so
-    /// try to reuse it for a batch of [`Instant`](crate::Instant).
+    /// try to reuse it for a batch of `Instant`.
     ///
     /// # Examples
     ///
