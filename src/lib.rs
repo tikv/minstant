@@ -1,5 +1,36 @@
 // Copyright 2021 TiKV Project Authors. Licensed under Apache-2.0.
 
+//! A drop-in replacement for [`std::time::Instant`](https://doc.rust-lang.org/std/time/struct.Instant.html)
+//! that measures time with high performance and high accuracy powered by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter).
+//!
+//! ## Example
+//!
+//! ```
+//! let start = minstant::Instant::now();
+//!
+//! // Code snipppet to measure
+//!
+//! let end: std::time::Duration = start.elapsed();
+//! ```
+//!
+//! ## Platform Support
+//!
+//! Currently, only the Linux on `x86` or `x86_64` is backed by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter).
+//! On other platforms, `minstant` falls back to coarse time.
+//!
+//! ## Calibration
+//!
+//! [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter) doesn’t necessarily ticks in constant speed and even
+//! doesn't synchronize across CPU cores. The calibration detects the TSC deviation and calculates the correction
+//! factors with the assistance of a source wall clock. Once the deviation is beyond a crazy threshold, the calibration
+//! will fail, and then we will fall back to coarse time.
+//!
+//! This calibration is stored globally and reused. In order to start the calibration before any call to `minstant`
+//! as to make sure that the time spent on `minstant` is constant, we link the calibration into application's
+//! initialization linker section, so it'll get executed once the process starts.
+//!
+//! *[See also the `Instant` type](crate::Instant).*
+
 mod coarse_now;
 mod instant;
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
@@ -7,6 +38,10 @@ mod tsc_now;
 
 pub use instant::{Anchor, Instant};
 
+/// Return `true` if the current platform supports [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter),
+/// and the calibration has succeed.
+///
+/// The result is always the same during the lifetime of the application process.
 #[inline]
 pub fn is_tsc_available() -> bool {
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
@@ -87,7 +122,9 @@ mod tests {
                 #[cfg(not(target_os = "windows"))]
                 let expect_max_delta_ns = 5_000_000;
 
-                let real_delta = (duration_ns_std.as_nanos() as i128 - duration_ns_minstant.as_nanos() as i128).abs();
+                let real_delta = (duration_ns_std.as_nanos() as i128
+                    - duration_ns_minstant.as_nanos() as i128)
+                    .abs();
                 assert!(
                     real_delta < expect_max_delta_ns,
                     "real delta: {}",

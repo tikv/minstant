@@ -5,59 +5,164 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+/// A measurement of a monotonically nondecreasing clock. Similar to
+/// [`std::time::Instant`](std::time::Instant) but is faster and more
+/// accurate if TSC is available.
 #[derive(Clone, Copy)]
 pub struct Instant(u64);
 
 impl Instant {
-#[inline]
+    #[inline]
+    /// Returns an instant corresponding to "now".
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use minstant::Instant;
+    ///
+    /// let now = Instant::now();
+    /// ```
     pub fn now() -> Instant {
         Instant(crate::current_cycle())
     }
 
+    /// Returns the amount of time elapsed from another instant to this one.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `earlier` is later than `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use std::thread::sleep;
+    ///
+    /// use minstant::Instant;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.duration_since(now));
+    /// ```
     pub fn duration_since(&self, earlier: Instant) -> Duration {
         self.checked_duration_since(earlier)
             .expect("supplied instant is later than self")
     }
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or None if that instant is later than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use std::thread::sleep;
+    ///
+    /// use minstant::Instant;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.checked_duration_since(now));
+    /// println!("{:?}", now.checked_duration_since(new_now)); // None
+    /// ```
     pub fn checked_duration_since(&self, earlier: Instant) -> Option<Duration> {
         Some(Duration::from_nanos(
-            (self.0.checked_sub(earlier.0)? as f64 * crate::nanos_per_cycle()).round() as u64,
+            (self.0.checked_sub(earlier.0)? as f64 * crate::nanos_per_cycle()) as u64,
         ))
     }
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use std::thread::sleep;
+    ///
+    /// use minstant::Instant;
+    ///
+    /// let now = Instant::now();
+    /// sleep(Duration::new(1, 0));
+    /// let new_now = Instant::now();
+    /// println!("{:?}", new_now.saturating_duration_since(now));
+    /// println!("{:?}", now.saturating_duration_since(new_now)); // 0ns
+    /// ```
     pub fn saturating_duration_since(&self, earlier: Instant) -> Duration {
         self.checked_duration_since(earlier).unwrap_or_default()
     }
 
+    /// Returns the amount of time elapsed since this instant was created.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if the current time is earlier than this
+    /// instant, which is something that can happen if an `Instant` is
+    /// produced synthetically.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use std::thread::sleep;
+    ///
+    /// use minstant::Instant;
+    ///
+    /// let instant = Instant::now();
+    /// let three_secs = Duration::from_secs(3);
+    /// sleep(three_secs);
+    /// assert!(instant.elapsed() >= three_secs);
+    /// ```
     #[inline]
     pub fn elapsed(&self) -> Duration {
         Instant::now() - *self
     }
 
+    /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
+    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
     pub fn checked_add(&self, duration: Duration) -> Option<Instant> {
         self.0
-            .checked_add(
-                (duration.as_nanos() as u64 as f64 / crate::nanos_per_cycle()).round() as u64,
-            )
+            .checked_add((duration.as_nanos() as u64 as f64 / crate::nanos_per_cycle()) as u64)
             .map(Instant)
     }
 
+    /// Returns `Some(t)` where `t` is the time `self - duration` if `t` can be represented as
+    /// `Instant` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
     pub fn checked_sub(&self, duration: Duration) -> Option<Instant> {
         self.0
-            .checked_sub(
-                (duration.as_nanos() as u64 as f64 / crate::nanos_per_cycle()).round() as u64,
-            )
+            .checked_sub((duration.as_nanos() as u64 as f64 / crate::nanos_per_cycle()) as u64)
             .map(Instant)
     }
 
+    /// Convert interal clocking counter into a UNIX timestamp represented as the
+    /// nanosecond elapsed from [UNIX_EPOCH](std::time::UNIX_EPOCH).
+    ///
+    /// [`Anchor`](crate::Anchor) contains the necessary callibraion data for conversion.
+    /// Typically, initializing an [`Anchor`](crate::Anchor) takes about 50 nano seconds, so
+    /// try to reuse it for a batch of [`Instant`](crate::Instant).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::UNIX_EPOCH;
+    /// use minstant::{Instant, Anchor};
+    ///
+    /// let anchor = Anchor::new();
+    /// let instant = Instant::now();
+    ///
+    /// let expected = UNIX_EPOCH.elapsed().unwrap().as_nanos();
+    /// assert!((instant.as_unix_nanos(&anchor) as i64 - expected as i64).abs() < 1_000_000);
+    /// ```
     pub fn as_unix_nanos(&self, anchor: &Anchor) -> u64 {
         if self.0 > anchor.cycle {
-            let forward_ns =
-                ((self.0 as f64 - anchor.cycle as f64) * crate::nanos_per_cycle()).round() as u64;
+            let forward_ns = ((self.0 - anchor.cycle) as f64 * crate::nanos_per_cycle()) as u64;
             anchor.unix_time_ns + forward_ns
         } else {
-            let backward_ns =
-                ((anchor.cycle as f64 - self.0 as f64) * crate::nanos_per_cycle()).round() as u64;
+            let backward_ns = ((anchor.cycle - self.0) as f64 * crate::nanos_per_cycle()) as u64;
             anchor.unix_time_ns - backward_ns
         }
     }
@@ -107,6 +212,9 @@ impl std::fmt::Debug for Instant {
     }
 }
 
+/// An anchor which can be used to convert internal clocking counter into system timestamp.
+///
+/// *[See also the `Instant::as_unix_nanos()`](crate::Instant::as_unix_nanos).*
 #[derive(Copy, Clone)]
 pub struct Anchor {
     unix_time_ns: u64,
