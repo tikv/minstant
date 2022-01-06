@@ -3,8 +3,7 @@
 [![Build Status](https://travis-ci.org/tikv/minstant.svg?branch=master)](https://travis-ci.org/tikv/minstant)
 [![LICENSE](https://img.shields.io/github/license/tikv/minstant.svg)](https://github.com/tikv/minstant/blob/master/LICENSE)
 
-A Rust library to measure time with high performance.
-
+A drop-in replacement for [`std::time::Instant`](https://doc.rust-lang.org/std/time/struct.Instant.html) that measures time with high performance and high accuracy powered by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter).
 
 ## Usage
 
@@ -14,16 +13,34 @@ minstant = { git = "https://github.com/tikv/minstant.git", branch = "master" }
 ```
 
 ```rust
-let start = minstant::now();
+let start = minstant::Instant::now();
 
 // Code snipppet to measure
 
-let end = minstant::now();
-
-let elapsed_nanos = (end - start) as f64 * minstant::nanos_per_cycle();
+let duration: std::time::Duration = start.elapsed();
 ```
 
 
 ## Motivation
 
-The main purpose is to use [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter) on x86 processors to measure time at high speed without losing much accuracy. If TSC is inaccessible (on non-x86 systems) or unreliable, it will fallback to coarse time.
+This library is used by a high performance tracing library [`minitrace-rust`](https://github.com/tikv/minitrace-rust). The main purpose is to use [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter) on x86 processors to measure time at high speed without losing much accuracy.
+
+## Platform Support
+
+Currently, only the Linux on `x86` or `x86_64` is backed by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter). On other platforms, `minstant` falls back to coarse time. If TSC is unstable, it will also fall back to coarse time.
+
+## Benchmark
+
+Benchmark platform is `Intel(R) Xeon(R) CPU E5-2630 v4 @ 2.20GHz` on CentOS 7.
+
+```sh
+> cargo criterion
+
+Instant::now()/minstant             time:   [10.449 ns 10.514 ns 10.619 ns]
+Instant::now()/quanta               time:   [31.467 ns 31.628 ns 31.822 ns]
+Instant::now()/std                  time:   [26.831 ns 26.924 ns 27.016 ns]
+minstant::Anchor::new()             time:   [46.987 ns 47.243 ns 47.498 ns]
+minstant::Instant::as_unix_nanos()  time:   [15.287 ns 15.318 ns 15.350 ns]
+```
+
+![](benchmark.jpeg)
