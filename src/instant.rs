@@ -26,11 +26,14 @@ impl Instant {
         Instant(crate::current_cycle())
     }
 
-    /// Returns the amount of time elapsed from another instant to this one.
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
     ///
     /// # Panics
     ///
-    /// This function will panic if `earlier` is later than `self`.
+    /// Previously we panicked if `earlier` was later than `self`. Currently this method saturates
+    /// to follow the behavior of the standard library. Future versions may reintroduce the panic
+    /// in some circumstances.
     ///
     /// # Examples
     ///
@@ -44,10 +47,10 @@ impl Instant {
     /// sleep(Duration::new(1, 0));
     /// let new_now = Instant::now();
     /// println!("{:?}", new_now.duration_since(now));
+    /// println!("{:?}", now.duration_since(new_now)); // 0ns
     /// ```
     pub fn duration_since(&self, earlier: Instant) -> Duration {
-        self.checked_duration_since(earlier)
-            .expect("supplied instant is later than self")
+        self.checked_duration_since(earlier).unwrap_or_default()
     }
 
     /// Returns the amount of time elapsed from another instant to this one,
@@ -201,6 +204,14 @@ impl SubAssign<Duration> for Instant {
 impl Sub<Instant> for Instant {
     type Output = Duration;
 
+    /// Returns the amount of time elapsed from another instant to this one,
+    /// or zero duration if that instant is later than this one.
+    ///
+    /// # Panics
+    ///
+    /// Previously we panicked if `other` was later than `self`. Currently this method saturates
+    /// to follow the behavior of the standard library. Future versions may reintroduce the panic
+    /// in some circumstances.
     fn sub(self, other: Instant) -> Duration {
         self.duration_since(other)
     }
