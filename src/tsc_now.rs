@@ -222,6 +222,10 @@ enum TscReadError {
     FailedToParse((core::num::ParseIntError, String)),
 }
 
+/// Attempts to read the TSC frequency as reported by the linux kernel.
+/// This value only exists in Google's production kernel, but it is not upstreamed to the mainline kernel tree.
+/// However it is possible to export the value using a custom kernel module:
+/// https://github.com/trailofbits/tsc_freq_khz
 fn try_read_tsc_freq_khz() -> Result<u64, TscReadError> {
     let s = std::fs::read_to_string("/sys/devices/system/cpu/cpu0/tsc_freq_khz")
         .map_err(TscReadError::FailedToRead)?;
