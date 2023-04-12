@@ -216,13 +216,33 @@ fn is_tsc_percpu_stable() -> bool {
     f().unwrap_or(false)
 }
 
+#[derive(Debug)]
+enum TscReadError {
+    FailedToRead(std::io::Error),
+    FailedToParse((core::num::ParseIntError, String)),
+}
+
+fn try_read_tsc_freq_khz() -> Result<u64, TscReadError> {
+    let s = std::fs::read_to_string("/sys/devices/system/cpu/cpu0/tsc_freq_khz")
+        .map_err(TscReadError::FailedToRead)?;
+    s.trim()
+        .parse()
+        .map_err(|e| TscReadError::FailedToParse((e, s)))
+}
+
 /// Returns (1) cycles per second and (2) cycles from anchor.
 /// The result of subtracting `cycles_from_anchor` from newly fetched TSC
 /// can be used to
 ///   1. readjust TSC to begin from zero
 ///   2. sync TSCs between all CPUs
 fn cycles_per_sec(anchor: Instant) -> (u64, u64) {
-    let (cps, last_monotonic, last_tsc) = _cycles_per_sec();
+    let (cps, last_monotonic, last_tsc) = if let Ok(tsc_freq_khz) = try_read_tsc_freq_khz() {
+        let (last_monotonic, last_tsc) = monotonic_with_tsc();
+        (tsc_freq_khz * 1000, last_monotonic, last_tsc)
+    } else {
+        _calculate_cycles_per_sec()
+    };
+
     let nanos_from_anchor = (last_monotonic - anchor).as_nanos();
     let cycles_flied = cps as f64 * nanos_from_anchor as f64 / 1_000_000_000.0;
     let cycles_from_anchor = last_tsc - cycles_flied.ceil() as u64;
@@ -231,7 +251,7 @@ fn cycles_per_sec(anchor: Instant) -> (u64, u64) {
 }
 
 /// Returns (1) cycles per second, (2) last monotonic time and (3) associated tsc.
-fn _cycles_per_sec() -> (u64, Instant, u64) {
+fn _calculate_cycles_per_sec() -> (u64, Instant, u64) {
     let mut cycles_per_sec;
     let mut last_monotonic;
     let mut last_tsc;
