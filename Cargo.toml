@@ -1,8 +1,8 @@
 [package]
 name = "minstant"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["The TiKV Authors"]
-edition = "2018"
+edition = "2021"
 license = "MIT"
 description = "A drop-in replacement for `std::time::Instant` that measures time with high performance and high accuracy powered by TSC"
 homepage = "https://github.com/tikv/minstant"
