@@ -31,11 +31,16 @@
 //!
 //! *[See also the `Instant` type](crate::Instant).*
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 mod coarse_now;
 mod instant;
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tsc_now;
 
+#[cfg(all(feature = "atomic", target_has_atomic = "64"))]
+#[cfg_attr(docsrs, doc(cfg(all(feature = "atomic", target_has_atomic = "64"))))]
+pub use instant::Atomic;
 pub use instant::{Anchor, Instant};
 
 /// Return `true` if the current platform supports [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter),

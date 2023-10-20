@@ -10,9 +10,15 @@ repository = "https://github.com/tikv/minstant"
 documentation = "https://docs.rs/minstant"
 readme = "README.md"
 keywords = ["TSC", "clock", "rdtsc", "timing", "nanosecond"]
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 ctor = "0.1.20"
+
+[features]
+atomic = []
 
 [target.'cfg(not(target_os = "wasi"))'.dependencies]
 libc = "0.2"
