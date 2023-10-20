@@ -29,8 +29,10 @@ jobs:
     - name: Check format
       run: cargo fmt --all -- --check
     - name: Build
-      run: cargo build --workspace --all-targets
+      run: cargo build --workspace --all-targets --all-features
+    - name: Clippy
+      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
     - name: Run tests
-      run: cargo test --workspace --all-targets -- --nocapture
+      run: cargo test --workspace --all-targets --all-features -- --nocapture
     - name: Run benches
-      run: cargo bench --workspace --all-targets
+      run: cargo bench --workspace --all-targets --all-features
