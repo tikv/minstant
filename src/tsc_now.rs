@@ -5,8 +5,6 @@
 use std::time::Instant;
 use std::{cell::UnsafeCell, fs::read_to_string};
 
-type Error = Box<dyn std::error::Error>;
-
 static TSC_STATE: TSCState = TSCState {
     is_tsc_available: UnsafeCell::new(false),
     tsc_level: UnsafeCell::new(TSCLevel::Unstable),
