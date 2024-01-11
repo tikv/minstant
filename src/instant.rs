@@ -5,6 +5,9 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Deserializer, Serialize};
+
 /// A measurement of a monotonically nondecreasing clock. Similar to
 /// [`std::time::Instant`](std::time::Instant) but is faster and more
 /// accurate if TSC is available.
@@ -142,7 +145,12 @@ impl Instant {
             .map(Instant)
     }
 
-    /// Convert interal clocking counter into a UNIX timestamp represented as the
+    /// Convert the instant into its internal representation.
+    pub fn into_inner(self) -> u64 {
+        self.0
+    }
+
+    /// Convert internal clocking counter into a UNIX timestamp represented as the
     /// nanoseconds elapsed from [UNIX_EPOCH](std::time::UNIX_EPOCH).
     ///
     /// [`Anchor`](crate::Anchor) contains the necessary calibration data for conversion.
@@ -169,6 +177,12 @@ impl Instant {
             let backward_ns = ((anchor.cycle - self.0) as f64 * crate::nanos_per_cycle()) as u64;
             anchor.unix_time_ns - backward_ns
         }
+    }
+}
+
+impl Default for Instant {
+    fn default() -> Self {
+        Self::now()
     }
 }
 
@@ -221,6 +235,29 @@ impl Sub<Instant> for Instant {
 impl std::fmt::Debug for Instant {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> Deserialize<'de> for Instant {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = u64::deserialize(deserializer)?;
+        let result = value as f64 / crate::nanos_per_cycle();
+        Ok(Instant(result as u64))
+    }
+}
+
+#[cfg(feature = "serde")]
+impl Serialize for Instant {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let value = (self.0 as f64 * crate::nanos_per_cycle()) as u64;
+        serializer.serialize_u64(value)
     }
 }
 

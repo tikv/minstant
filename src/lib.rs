@@ -96,16 +96,13 @@ mod tests {
     use super::*;
     use rand::Rng;
     use std::time::{Duration, Instant as StdInstant};
-    use wasm_bindgen_test::wasm_bindgen_test;
 
     #[test]
-    #[wasm_bindgen_test]
     fn test_is_tsc_available() {
         let _ = is_tsc_available();
     }
 
     #[test]
-    #[wasm_bindgen_test]
     fn test_monotonic() {
         let mut prev = 0;
         for _ in 0..10000 {
@@ -116,7 +113,6 @@ mod tests {
     }
 
     #[test]
-    #[wasm_bindgen_test]
     fn test_nanos_per_cycle() {
         let _ = nanos_per_cycle();
     }
