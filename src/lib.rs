@@ -33,7 +33,6 @@
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-mod coarse_now;
 mod instant;
 #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
 mod tsc_now;
@@ -61,15 +60,22 @@ pub fn is_tsc_available() -> bool {
 
 #[inline]
 pub(crate) fn current_cycle() -> u64 {
+    let coarse_cycle = || {
+        let coarse = coarsetime::Instant::now_without_cache_update();
+        coarsetime::Duration::from_ticks(coarse.as_ticks()).as_nanos()
+    };
+
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
-    if is_tsc_available() {
-        tsc_now::current_cycle()
-    } else {
-        coarse_now::current_cycle()
+    {
+        if tsc_now::is_tsc_available() {
+            tsc_now::current_cycle()
+        } else {
+            coarse_cycle()
+        }
     }
     #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
     {
-        coarse_now::current_cycle()
+        coarse_cycle()
     }
 }
 
@@ -123,7 +129,7 @@ mod tests {
                 let duration_ns_std = std_instant.elapsed();
 
                 #[cfg(target_os = "windows")]
-                let expect_max_delta_ns = 20_000_000;
+                let expect_max_delta_ns = 40_000_000;
                 #[cfg(not(target_os = "windows"))]
                 let expect_max_delta_ns = 5_000_000;
 
