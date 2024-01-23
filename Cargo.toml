@@ -25,6 +25,8 @@ atomic = []
 criterion = "0.3"
 quanta = "0.9"
 rand = "0.8"
+wasm-bindgen-test = "0.3"
+getrandom = { version = "0.2", features = ["js"] }
 
 [[bench]]
 name = "criterion"
