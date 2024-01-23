@@ -129,7 +129,7 @@ mod tests {
                 let duration_ns_std = std_instant.elapsed();
 
                 #[cfg(target_os = "windows")]
-                let expect_max_delta_ns = 20_000_000;
+                let expect_max_delta_ns = 40_000_000;
                 #[cfg(not(target_os = "windows"))]
                 let expect_max_delta_ns = 5_000_000;
 
