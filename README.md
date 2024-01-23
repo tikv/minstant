@@ -11,7 +11,7 @@ A drop-in replacement for [`std::time::Instant`](https://doc.rust-lang.org/std/t
 
 ```toml
 [dependencies]
-minstant = "0.1.2"
+minstant = "0.1"
 ```
 
 ```rust

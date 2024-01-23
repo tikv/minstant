@@ -36,3 +36,13 @@ jobs:
       run: cargo test --workspace --all-targets --all-features -- --nocapture
     - name: Run benches
       run: cargo bench --workspace --all-targets --all-features
+
+  build-wasm:
+    runs-on: ubuntu-latest
+    env:
+      RUST_BACKTRACE: 1
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up toolchains
+      run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    - run: wasm-pack test --node
