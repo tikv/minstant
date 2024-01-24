@@ -122,6 +122,15 @@ mod tests {
     }
 
     #[test]
+    #[wasm_bindgen_test]
+    fn test_unix_time() {
+        let now = Instant::now();
+        let anchor = Anchor::new();
+        let unix_nanos = now.as_unix_nanos(&anchor);
+        assert!(unix_nanos > 0);
+    }
+
+    #[test]
     fn test_duration() {
         let mut rng = rand::thread_rng();
         for _ in 0..10 {
