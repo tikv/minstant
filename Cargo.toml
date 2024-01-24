@@ -1,6 +1,6 @@
 [package]
 name = "minstant"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["The TiKV Authors"]
 edition = "2021"
 license = "MIT"
