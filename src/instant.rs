@@ -2,8 +2,9 @@
 
 use std::{
     ops::{Add, AddAssign, Sub, SubAssign},
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::Duration,
 };
+use web_time::{SystemTime, UNIX_EPOCH};
 
 /// A measurement of a monotonically nondecreasing clock. Similar to
 /// [`std::time::Instant`](std::time::Instant) but is faster and more
