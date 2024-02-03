@@ -34,7 +34,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 mod instant;
-#[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod tsc_now;
 
 #[cfg(all(feature = "atomic", target_has_atomic = "64"))]
@@ -48,11 +48,11 @@ pub use instant::{Anchor, Instant};
 /// The result is always the same during the lifetime of the application process.
 #[inline]
 pub fn is_tsc_available() -> bool {
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         tsc_now::is_tsc_available()
     }
-    #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
         false
     }
@@ -65,7 +65,7 @@ pub(crate) fn current_cycle() -> u64 {
         coarsetime::Duration::from_ticks(coarse.as_ticks()).as_nanos()
     };
 
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         if tsc_now::is_tsc_available() {
             tsc_now::current_cycle()
@@ -73,7 +73,8 @@ pub(crate) fn current_cycle() -> u64 {
             coarse_cycle()
         }
     }
-    #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
         coarse_cycle()
     }
@@ -81,11 +82,11 @@ pub(crate) fn current_cycle() -> u64 {
 
 #[inline]
 pub(crate) fn nanos_per_cycle() -> f64 {
-    #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
         tsc_now::nanos_per_cycle()
     }
-    #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
         1.0
     }
@@ -141,9 +142,6 @@ mod tests {
                 let duration_ns_minstant = instant.elapsed();
                 let duration_ns_std = std_instant.elapsed();
 
-                #[cfg(target_os = "windows")]
-                let expect_max_delta_ns = 40_000_000;
-                #[cfg(not(target_os = "windows"))]
                 let expect_max_delta_ns = 5_000_000;
 
                 let real_delta = (duration_ns_std.as_nanos() as i128

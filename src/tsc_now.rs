@@ -91,10 +91,27 @@ impl TSCLevel {
 /// rely on the result to say tsc is stable so that no need to
 /// sync TSCs by ourselves.
 fn is_tsc_stable() -> bool {
-    let clock_source =
-        read_to_string("/sys/devices/system/clocksource/clocksource0/available_clocksource");
+    let stable_by_cpuid = raw_cpuid::CpuId::new()
+        .get_advanced_power_mgmt_info()
+        .map(|apm| apm.has_invariant_tsc())
+        .unwrap_or(false);
 
-    clock_source.map(|s| s.contains("tsc")).unwrap_or(false)
+    if stable_by_cpuid {
+        return true;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let clock_source =
+            read_to_string("/sys/devices/system/clocksource/clocksource0/available_clocksource");
+
+        clock_source.map(|s| s.contains("tsc")).unwrap_or(false)
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
 }
 
 /// Returns (1) cycles per second and (2) cycles from anchor.
