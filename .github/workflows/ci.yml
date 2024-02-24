@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-        features: ["", "fallback-coarse", "atomic", "fallback-coarse,atomic"]
+        features: ["atomic", "fallback-coarse", "fallback-coarse,atomic"]
         rust: [stable]
     env:
       RUST_BACKTRACE: 1
