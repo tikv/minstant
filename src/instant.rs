@@ -14,7 +14,7 @@ use web_time::{SystemTime, UNIX_EPOCH};
 pub struct Instant(u64);
 
 impl Instant {
-    /// A default `Instant` that can be seen as a fixed but random moment in time.
+    /// A default `Instant` that can be seen as a fixed but random moment.
     pub const ZERO: Instant = Instant(0);
 
     #[inline]
