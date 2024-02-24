@@ -31,7 +31,7 @@ This library is used by a high performance tracing library [`minitrace-rust`](ht
 
 Currently, only the Linux on `x86` or `x86_64` is backed by [TSC](https://en.wikipedia.org/wiki/Time_Stamp_Counter). On other platforms, `minstant` falls back to `std::time`. If TSC is unstable, it will also fall back to `std::time`.
 
-If speed is privileged over accuracy when fallback occur, you can use `fallback-corase` feature to corase time:
+If speed is privileged over accuracy when fallback occurs, you can use `fallback-corase` feature to corase time:
 
 ```toml
 [dependencies]
