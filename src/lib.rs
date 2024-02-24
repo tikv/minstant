@@ -60,23 +60,32 @@ pub fn is_tsc_available() -> bool {
 
 #[inline]
 pub(crate) fn current_cycle() -> u64 {
-    let coarse_cycle = || {
-        let coarse = coarsetime::Instant::now_without_cache_update();
-        coarsetime::Duration::from_ticks(coarse.as_ticks()).as_nanos()
-    };
-
     #[cfg(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64")))]
     {
         if tsc_now::is_tsc_available() {
             tsc_now::current_cycle()
         } else {
-            coarse_cycle()
+            current_cycle_fallback()
         }
     }
     #[cfg(not(all(target_os = "linux", any(target_arch = "x86", target_arch = "x86_64"))))]
     {
-        coarse_cycle()
+        current_cycle_fallback()
     }
+}
+
+#[cfg(not(feature = "fallback-coarse"))]
+pub(crate) fn current_cycle_fallback() -> u64 {
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0)
+}
+
+#[cfg(feature = "fallback-coarse")]
+pub(crate) fn current_cycle_fallback() -> u64 {
+    let coarse = coarsetime::Instant::now_without_cache_update();
+    coarsetime::Duration::from_ticks(coarse.as_ticks()).as_nanos()
 }
 
 #[inline]

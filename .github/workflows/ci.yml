@@ -15,6 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        features: ["", "fallback-coarse", "atomic", "fallback-coarse,atomic"]
         rust: [stable]
     env:
       RUST_BACKTRACE: 1
@@ -29,13 +30,13 @@ jobs:
     - name: Check format
       run: cargo fmt --all -- --check
     - name: Build
-      run: cargo build --workspace --all-targets --all-features
+      run: cargo build --workspace --all-targets --features ${{ matrix.features }}
     - name: Clippy
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --workspace --all-targets --features ${{ matrix.features }} -- -D warnings
     - name: Run tests
-      run: cargo test --workspace --all-targets --all-features -- --nocapture
+      run: cargo test --workspace --all-targets --features ${{ matrix.features }} -- --nocapture
     - name: Run benches
-      run: cargo bench --workspace --all-targets --all-features
+      run: cargo bench --workspace --all-targets --features ${{ matrix.features }}
 
   build-wasm:
     runs-on: ubuntu-latest
