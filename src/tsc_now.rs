@@ -1,9 +1,12 @@
 // Copyright 2021 TiKV Project Authors. Licensed under Apache-2.0.
 
-//! This module will be compiled when it's either linux_x86 or linux_x86_64.
+//! This module will be compiled when it's either linux_aarch64, linux_x86 or linux_x86_64.
 
 use std::time::Instant;
-use std::{cell::UnsafeCell, fs::read_to_string};
+use std::cell::UnsafeCell;
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+use std::fs::read_to_string;
 
 static TSC_STATE: TSCState = TSCState {
     is_tsc_available: UnsafeCell::new(false),
@@ -90,6 +93,11 @@ impl TSCLevel {
 /// If linux kernel detected TSCs are sync between CPUs, we can
 /// rely on the result to say tsc is stable so that no need to
 /// sync TSCs by ourselves.
+#[cfg(target_arch = "aarch64")]
+fn is_tsc_stable() -> bool {
+    true
+}
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 fn is_tsc_stable() -> bool {
     let clock_source =
         read_to_string("/sys/devices/system/clocksource/clocksource0/available_clocksource");
@@ -149,6 +157,13 @@ fn monotonic_with_tsc() -> (Instant, u64) {
 
 #[inline]
 fn tsc() -> u64 {
+    #[cfg(target_arch = "aarch64")]
+    unsafe fn _rdtsc() -> u64 {
+        use std::arch::asm;
+        let mut v: u64;
+        asm!("mrs {v}, CNTVCT_EL0", v = out(reg) v);
+        v
+    }
     #[cfg(target_arch = "x86")]
     use core::arch::x86::_rdtsc;
     #[cfg(target_arch = "x86_64")]
